@@ -8193,7 +8193,7 @@
 	
 	run = function() {
 	  var animate, floor5, gq, grid, input, justShowStat, pt, renderer, rq, showStat, stats, time, timers;
-	  renderer = new Renderer('#000000', '#FFFFFF', 'hexgrid', 50);
+	  renderer = new Renderer('hexgrid', 50);
 	  rq = new ActionQueue(renderer);
 	  grid = new Grid(4);
 	  gq = new ActionQueue(grid);
@@ -8284,15 +8284,31 @@
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	module.exports = Renderer = (function() {
-	  function Renderer(bgColor, lineColor, domId, gridRadius) {
-	    this.bgColor = bgColor;
-	    this.lineColor = lineColor;
+	  Renderer.prototype.center = [0, 0];
+	
+	  Renderer.prototype.scaleBase = 0;
+	
+	  Renderer.prototype.scale = 1;
+	
+	  Renderer.prototype.width = 0;
+	
+	  Renderer.prototype.height = 0;
+	
+	  Renderer.prototype.color = {
+	    bgOut: '#666',
+	    bgIn: '#CCC',
+	    lineOut: '#777',
+	    lineIn: '#333',
+	    lineSel: '#0C0',
+	    error: '#F00',
+	    text: '#333'
+	  };
+	
+	  function Renderer(domId, gridRadius) {
 	    this.domId = domId;
 	    this.gridRadius = gridRadius;
 	    this.zoom = bind(this.zoom, this);
 	    this.pan = bind(this.pan, this);
-	    this.updateCursor = bind(this.updateCursor, this);
-	    this.setCenter = bind(this.setCenter, this);
 	    this.drawGrid = bind(this.drawGrid, this);
 	    this.drawGridSpace = bind(this.drawGridSpace, this);
 	    this.textGridSpace = bind(this.textGridSpace, this);
@@ -8314,29 +8330,17 @@
 	    this.cubeToHex = bind(this.cubeToHex, this);
 	    this.hexToCube = bind(this.hexToCube, this);
 	    this.worldToHex = bind(this.worldToHex, this);
+	    this.notifyResize = bind(this.notifyResize, this);
 	    this.worldToScreen = bind(this.worldToScreen, this);
 	    this.screenToWorld = bind(this.screenToWorld, this);
+	    this.setCenter = bind(this.setCenter, this);
+	    this.adjustScaleBase = bind(this.adjustScaleBase, this);
 	    this.setScaleBase = bind(this.setScaleBase, this);
-	    this.doResize = bind(this.doResize, this);
 	    this.view = document.getElementById(this.domId);
 	    this.ctx = this.view.getContext('2d');
-	    this.centerX = 0;
-	    this.centerY = 0;
-	    this.mouseX = 0;
-	    this.mouseY = 0;
-	    this.scaleBase = 0;
-	    this.scale = 1;
-	    this.doResize();
-	    window.addEventListener("resize", this.doResize);
+	    this.notifyResize();
+	    window.addEventListener("resize", this.notifyResize);
 	  }
-	
-	  Renderer.prototype.doResize = function() {
-	    this.width = document.documentElement.clientWidth;
-	    this.height = document.documentElement.clientHeight;
-	    this.view.width = this.width;
-	    this.view.height = this.height;
-	    return this;
-	  };
 	
 	  Renderer.prototype.setScaleBase = function(s) {
 	    this.scaleBase = s;
@@ -8344,16 +8348,35 @@
 	    return this;
 	  };
 	
+	  Renderer.prototype.adjustScaleBase = function(ds) {
+	    this.setScaleBase(this.scaleBase + ds);
+	    return this;
+	  };
+	
+	  Renderer.prototype.setCenter = function(pos) {
+	    return this.center = pos;
+	  };
+	
 	  Renderer.prototype.screenToWorld = function(pos) {
-	    var x, y;
+	    var cx, cy, ref, x, y;
 	    x = pos[0], y = pos[1];
-	    return [((x - (this.width / 2)) * this.scale) + this.centerX, ((y - (this.height / 2)) * this.scale) + this.centerY];
+	    ref = this.center, cx = ref[0], cy = ref[1];
+	    return [((x - (this.width / 2)) * this.scale) + cx, ((y - (this.height / 2)) * this.scale) + cy];
 	  };
 	
 	  Renderer.prototype.worldToScreen = function(pos) {
-	    var x, y;
+	    var cx, cy, ref, x, y;
 	    x = pos[0], y = pos[1];
-	    return [(this.width / 2) + ((x - this.centerX) / this.scale), (this.height / 2) + ((y - this.centerY) / this.scale)];
+	    ref = this.center, cx = ref[0], cy = ref[1];
+	    return [(this.width / 2) + ((x - cx) / this.scale), (this.height / 2) + ((y - cy) / this.scale)];
+	  };
+	
+	  Renderer.prototype.notifyResize = function() {
+	    this.width = document.documentElement.clientWidth;
+	    this.height = document.documentElement.clientHeight;
+	    this.view.width = this.width;
+	    this.view.height = this.height;
+	    return this;
 	  };
 	
 	  Renderer.prototype.worldToHex = function(pos) {
@@ -8433,7 +8456,7 @@
 	    var cx, cy, hq, hr, ref, theta;
 	    hq = hex[0], hr = hex[1];
 	    ref = this.hexCenterToWorld(hex), cx = ref[0], cy = ref[1];
-	    theta = Math.PI / 180 * (60 * corner);
+	    theta = Math.PI / 180 * (60 * ((6 - corner) % 6));
 	    return [cx + this.gridRadius * Math.cos(theta), cy + this.gridRadius * Math.sin(theta)];
 	  };
 	
@@ -8451,12 +8474,7 @@
 	    return results;
 	  };
 	
-	  Renderer.prototype.blank = function() {
-	    this.ctx.save();
-	    this.ctx.fillStyle = this.bgColor;
-	    this.ctx.fillRect(0, 0, this.width, this.height);
-	    return this.ctx.restore();
-	  };
+	  Renderer.prototype.blank = function() {};
 	
 	  Renderer.prototype.calculateRenderPriority = function(space) {
 	    var val;
@@ -8499,13 +8517,13 @@
 	    this.ctx.fillStyle = (function() {
 	      switch (space.type) {
 	        case "OutOfBounds":
-	          return "#666666";
+	          return this.color.bgOut;
 	        case "Empty":
-	          return "#CCCCCC";
+	          return this.color.bgIn;
 	        default:
-	          return "#FF0000";
+	          return this.color.error;
 	      }
-	    })();
+	    }).call(this);
 	    this.ctx.fill();
 	    return this.ctx.restore();
 	  };
@@ -8514,13 +8532,14 @@
 	    var hipri, j, n, ref, ref1, x0, x1, y0, y1;
 	    this.ctx.save();
 	    for (n = j = 0; j <= 2; n = ++j) {
-	      ref = this.worldToScreen(this.hexCornerToWorld(pos, (6 - n - 1) % 6)), x0 = ref[0], y0 = ref[1];
-	      ref1 = this.worldToScreen(this.hexCornerToWorld(pos, (6 - n) % 6)), x1 = ref1[0], y1 = ref1[1];
+	      ref = this.worldToScreen(this.hexCornerToWorld(pos, n - 1)), x0 = ref[0], y0 = ref[1];
+	      ref1 = this.worldToScreen(this.hexCornerToWorld(pos, n)), x1 = ref1[0], y1 = ref1[1];
 	      hipri = (space.edges[n] != null) ? this.getHighestPrioritySpace(space.edges[n]) : null;
 	      this.ctx.beginPath();
+	      this.ctx.lineWidth = 4;
+	      this.ctx.strokeStyle = (hipri != null) && hipri.selected ? (this.ctx.lineWidth = 8, this.color.lineSel) : (hipri != null) && hipri.type !== 'OutOfBounds' ? this.color.lineIn : this.color.lineOut;
 	      this.ctx.moveTo(x0, y0);
 	      this.ctx.lineTo(x1, y1);
-	      this.ctx.strokeStyle = (hipri != null) && hipri.selected ? '#FF0000' : (hipri != null) && hipri.type !== 'OutOfBounds' ? '#00FF00' : '#999999';
 	      this.ctx.closePath();
 	      this.ctx.stroke();
 	    }
@@ -8531,7 +8550,7 @@
 	    var ref, x, y;
 	    this.ctx.save();
 	    ref = this.worldToScreen(this.hexCenterToWorld(pos)), x = ref[0], y = ref[1];
-	    this.ctx.fillStyle = '#000000';
+	    this.ctx.fillStyle = this.color.text;
 	    this.ctx.textAlign = "center";
 	    this.ctx.font = "" + Math.floor(14 / this.scale) + "px sans-serif";
 	    this.ctx.fillText(space.type, x, y);
@@ -8571,27 +8590,20 @@
 	    return results;
 	  };
 	
-	  Renderer.prototype.setCenter = function(x, y) {
-	    this.centerX = x;
-	    return this.centerY = y;
-	  };
-	
-	  Renderer.prototype.updateCursor = function(x, y) {
-	    this.mouseX = x;
-	    return this.mouseY = y;
-	  };
-	
 	  Renderer.prototype.pan = function(dx, dy) {
-	    return this.setCenter(this.centerX - dx * this.scale, this.centerY - dy * this.scale);
+	    var ref, x, y;
+	    ref = this.center, x = ref[0], y = ref[1];
+	    return this.setCenter([x - dx * this.scale, y - dy * this.scale]);
 	  };
 	
-	  Renderer.prototype.zoom = function(factor) {
-	    var dx, dy, ref, x, y;
-	    ref = this.screenToWorld([this.mouseX, this.mouseY]), x = ref[0], y = ref[1];
-	    dx = (x - this.centerX) / this.scale;
-	    dy = (y - this.centerY) / this.scale;
-	    this.setScaleBase(this.scaleBase + factor);
-	    return this.setCenter(x - (dx * this.scale), y - (dy * this.scale));
+	  Renderer.prototype.zoom = function(pos, factor) {
+	    var cx, cy, dx, dy, ref, ref1, x, y;
+	    ref = this.screenToWorld(pos), x = ref[0], y = ref[1];
+	    ref1 = this.center, cx = ref1[0], cy = ref1[1];
+	    dx = (x - cx) / this.scale;
+	    dy = (y - cy) / this.scale;
+	    this.adjustScaleBase(factor);
+	    return this.setCenter([x - (dx * this.scale), y - (dy * this.scale)]);
 	  };
 	
 	  return Renderer;
@@ -8673,6 +8685,7 @@
 	  Grid.prototype.toggleSelect = function(pos) {
 	    var sp;
 	    sp = this.getSpace(pos);
+	    console.log(sp);
 	    if ((this.selected != null)) {
 	      this.selected.selected = false;
 	    }
@@ -8853,6 +8866,7 @@
 	    this.onMouseDown = bind(this.onMouseDown, this);
 	    this.moveOnNotClick = bind(this.moveOnNotClick, this);
 	    this.mouseMoveViewport = bind(this.mouseMoveViewport, this);
+	    this.getPos = bind(this.getPos, this);
 	    this.updateMouseData = bind(this.updateMouseData, this);
 	    this.active = false;
 	    this.CLICK_TIMEOUT = 300;
@@ -8876,7 +8890,6 @@
 	  }
 	
 	  Input.prototype.updateMouseData = function(e) {
-	    this.rq.q('updateCursor', e.clientX, e.clientY);
 	    this.mouse.x = e.clientX;
 	    this.mouse.y = e.clientY;
 	    this.mouse.l = e.buttons & 1 === 1;
@@ -8884,6 +8897,10 @@
 	    this.mouse.r = e.buttons & 2 === 2;
 	    this.mouse.a = e.buttons & 8 === 8;
 	    return this.mouse.b = e.buttons & 16 === 16;
+	  };
+	
+	  Input.prototype.getPos = function(e) {
+	    return [e.clientX, e.clientY];
 	  };
 	
 	  Input.prototype.mouseMoveViewport = function(e, m) {
@@ -8915,7 +8932,7 @@
 	        delete this.mouse.clickTimer;
 	        delete this.mouse.saveX;
 	        delete this.mouse.saveY;
-	        pos = this.rq.target.screenToHex([e.clientX, e.clientY]);
+	        pos = this.rq.target.screenToHex(this.getPos(e));
 	        this.gq.q('toggleSelect', pos);
 	      } else {
 	        this.mouseMoveViewport(e, this.mouse);
@@ -8944,11 +8961,12 @@
 	  };
 	
 	  Input.prototype.onWheel = function(e) {
+	    var pos;
 	    this.mouse.w = e.deltaY;
 	    this.mouse.wm = e.deltaMode;
 	    this.updateMouseData(e);
-	    this.rq.q('updateCursor', e.clientX, e.clientY);
-	    this.rq.q('zoom', e.deltaY / 1000);
+	    pos = this.getPos(e);
+	    this.rq.q('zoom', pos, e.deltaY / 1000);
 	    return void 0;
 	  };
 	

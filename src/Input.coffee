@@ -40,7 +40,6 @@ module.exports = class Input
       average: null
 
   updateMouseData: (e) =>
-    @rq.q('updateCursor', e.clientX, e.clientY)
     @mouse.x = e.clientX
     @mouse.y = e.clientY
     @mouse.l = (e.buttons & 1 == 1)
@@ -48,6 +47,9 @@ module.exports = class Input
     @mouse.r = (e.buttons & 2 == 2) # [sic]
     @mouse.a = (e.buttons & 8 == 8)
     @mouse.b = (e.buttons & 16 == 16)
+
+  getPos: (e) =>
+    [e.clientX, e.clientY]
 
   mouseMoveViewport: (e, m) =>
     @rq.q('pan', e.clientX - m.x, e.clientY - m.y)
@@ -73,7 +75,7 @@ module.exports = class Input
         delete @mouse.clickTimer
         delete @mouse.saveX
         delete @mouse.saveY
-        pos = @rq.target.screenToHex([e.clientX, e.clientY])
+        pos = @rq.target.screenToHex(@getPos(e))
         @gq.q('toggleSelect', pos)
       else
         @mouseMoveViewport(e, @mouse)
@@ -98,9 +100,9 @@ module.exports = class Input
     @mouse.w = e.deltaY
     @mouse.wm = e.deltaMode
     @updateMouseData(e)
+    pos = @getPos(e)
 
-    @rq.q('updateCursor', e.clientX, e.clientY)
-    @rq.q('zoom', e.deltaY / 1000)
+    @rq.q('zoom', pos, e.deltaY / 1000)
     undefined
 
   doListeners: (fn) =>

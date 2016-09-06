@@ -17,50 +17,57 @@
 # 
 
 module.exports = class Renderer
-  constructor: (@bgColor, @lineColor, @domId, @gridRadius) ->
-    @view = document.getElementById(@domId)
-    @ctx  = @view.getContext('2d')
+  center:    [0,0]
+  scaleBase:  0
+  scale:      1
+  width:      0
+  height:     0
+  color:
+    bgOut:   '#666'
+    bgIn:    '#CCC'
+    lineOut: '#777'
+    lineIn:  '#333'
+    lineSel: '#0C0'
+    error:   '#F00'
+    text:    '#333'
 
-    # The position in pixel-worldspace at which the
-    # center of the canvas points
-    @centerX = 0
-    @centerY = 0
+  constructor: (@domId, @gridRadius) ->
+    @view  = document.getElementById(@domId)
+    @ctx   = @view.getContext('2d')
 
-    # Last known mouse cursor in screenspace
-    @mouseX = 0
-    @mouseY = 0
-
-    # The base scale setting (Integer from -inf to +inf where
-    # 0 = scale of 1:1 and negative gives you a wider perspective)
-    @scaleBase = 0
-
-    # The computed scale setting Math.pow(Math.E, scaleBase)
-    @scale = 1
-
-    @doResize()
-    window.addEventListener("resize", @doResize)
-
-  doResize: () =>
-    @width  = document.documentElement.clientWidth
-    @height = document.documentElement.clientHeight
-    @view.width  = @width
-    @view.height = @height
-    this
+    @notifyResize()
+    window.addEventListener("resize", @notifyResize)
 
   setScaleBase: (s) =>
     @scaleBase = s
     @scale = Math.pow(Math.E, @scaleBase)
     this
 
+  adjustScaleBase: (ds) =>
+    @setScaleBase(@scaleBase + ds)
+    this
+
+  setCenter: (pos) =>
+    @center = pos
+
   screenToWorld: (pos) =>
     [x,y] = pos
-    [((x - (@width / 2)) * @scale) + @centerX,
-     ((y - (@height / 2)) * @scale) + @centerY]
+    [cx,cy] = @center
+    [((x - (@width / 2)) * @scale) + cx,
+     ((y - (@height / 2)) * @scale) + cy]
 
   worldToScreen: (pos) =>
     [x,y] = pos
-    [(@width / 2) + ((x - @centerX) / @scale),
-     (@height / 2) + ((y - @centerY) / @scale)]
+    [cx,cy] = @center
+    [(@width / 2) + ((x - cx) / @scale),
+     (@height / 2) + ((y - cy) / @scale)]
+
+  notifyResize: () =>
+    @width  = document.documentElement.clientWidth
+    @height = document.documentElement.clientHeight
+    @view.width   = @width
+    @view.height  = @height
+    this
 
   worldToHex: (pos) =>
     [x,y] = pos
@@ -126,7 +133,7 @@ module.exports = class Renderer
   hexCornerToWorld: (hex, corner) =>
     [hq,hr] = hex
     [cx,cy] = @hexCenterToWorld(hex)
-    theta = Math.PI / 180 * (60 * corner)
+    theta = Math.PI / 180 * (60 * ((6 - corner) % 6))
 
     [cx + @gridRadius * Math.cos(theta),
      cy + @gridRadius * Math.sin(theta)]
@@ -139,10 +146,10 @@ module.exports = class Renderer
     (@cubeToHex(@cubeRound(@cubeLerp(@hexToCube(a), @hexToCube(b), (1.0/n) * i))) for i in [0..n])
 
   blank: () =>
-    @ctx.save()
-    @ctx.fillStyle = @bgColor
-    @ctx.fillRect(0, 0, @width, @height)
-    @ctx.restore()
+    #@ctx.save()
+    #@ctx.fillStyle = @bgColor
+    #@ctx.fillRect(0, 0, @width, @height)
+    #@ctx.restore()
 
   calculateRenderPriority: (space) =>
     val = 0
@@ -175,9 +182,9 @@ module.exports = class Renderer
       @ctx.lineTo(x,y)
 
     @ctx.fillStyle = switch(space.type)
-      when "OutOfBounds" then "#666666"
-      when "Empty" then "#CCCCCC"
-      else "#FF0000"
+      when "OutOfBounds" then @color.bgOut
+      when "Empty" then @color.bgIn
+      else @color.error
 
     @ctx.fill()
 
@@ -187,8 +194,8 @@ module.exports = class Renderer
     @ctx.save()
 
     for n in [0..2]
-      [x0,y0] = @worldToScreen(@hexCornerToWorld(pos, (6-n-1)%6))
-      [x1,y1] = @worldToScreen(@hexCornerToWorld(pos, (6-n)%6))
+      [x0,y0] = @worldToScreen(@hexCornerToWorld(pos, n-1))
+      [x1,y1] = @worldToScreen(@hexCornerToWorld(pos, n))
 
       hipri = if(space.edges[n]?)
         @getHighestPrioritySpace(space.edges[n])
@@ -196,15 +203,17 @@ module.exports = class Renderer
         null
 
       @ctx.beginPath()
-      @ctx.moveTo(x0,y0)
-      @ctx.lineTo(x1,y1)
+      @ctx.lineWidth = 4
       @ctx.strokeStyle =
         if hipri? and hipri.selected
-          '#FF0000'
+          @ctx.lineWidth = 8
+          @color.lineSel
         else if hipri? and hipri.type != 'OutOfBounds'
-          '#00FF00'
+          @color.lineIn
         else
-          '#999999'
+          @color.lineOut
+      @ctx.moveTo(x0,y0)
+      @ctx.lineTo(x1,y1)
       @ctx.closePath()
       @ctx.stroke()
 
@@ -215,7 +224,7 @@ module.exports = class Renderer
 
     [x,y] = @worldToScreen(@hexCenterToWorld(pos))
 
-    @ctx.fillStyle = '#000000'
+    @ctx.fillStyle = @color.text
     @ctx.textAlign = "center"
     @ctx.font = "" + Math.floor(14 / @scale) + "px sans-serif"
     @ctx.fillText(space.type, x, y)
@@ -240,22 +249,16 @@ module.exports = class Renderer
       for hex in @createHexLine(@screenToHex([x0,y0]), @screenToHex([x1,y1]))
         @drawGridSpace(hex, grid.getSpace(hex))
 
-  setCenter: (x, y) =>
-    @centerX = x
-    @centerY = y
-
-  updateCursor: (x, y) =>
-    @mouseX = x
-    @mouseY = y
-
   pan: (dx, dy) =>
-    @setCenter(@centerX - dx * @scale,
-               @centerY - dy * @scale)
+    [x,y] = @center
+    @setCenter([x - dx * @scale,
+                      y - dy * @scale])
 
-  zoom: (factor) =>
-    [x,y] = @screenToWorld([@mouseX, @mouseY])
-    dx = (x - @centerX) / @scale
-    dy = (y - @centerY) / @scale
-    @setScaleBase(@scaleBase + factor)
-    @setCenter(x - (dx * @scale),
-               y - (dy * @scale))
+  zoom: (pos, factor) =>
+    [x,y] = @screenToWorld(pos)
+    [cx,cy] = @center
+    dx = (x - cx) / @scale
+    dy = (y - cy) / @scale
+    @adjustScaleBase(factor)
+    @setCenter([x - (dx * @scale),
+                      y - (dy * @scale)])

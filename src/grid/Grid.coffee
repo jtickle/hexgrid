@@ -54,6 +54,7 @@ module.exports = class Grid
 
   toggleSelect: (pos) =>
     sp = @getSpace(pos)
+    console.log sp
 
     if(@selected?)
       @selected.selected = false

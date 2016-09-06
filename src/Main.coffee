@@ -22,7 +22,7 @@ ActionQueue = require 'ActionQueue'
 Input       = require 'Input'
 
 run = () ->
-  renderer = new Renderer('#000000', '#FFFFFF', 'hexgrid', 50)
+  renderer = new Renderer('hexgrid', 50)
   rq       = new ActionQueue(renderer)
   grid     = new Grid(4)
   gq       = new ActionQueue(grid)
