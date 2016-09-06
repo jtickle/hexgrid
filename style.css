@@ -1,0 +1,45 @@
+body {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-family: sans-serif;
+}
+
+p.copyleft {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 999;
+  margin: 0.5em;
+}
+
+p.copyleft, p.copyleft a {
+  font-size: 8pt;
+  color: #669;
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#stats {
+  position: absolute;
+  width: 75px;
+  top: 0;
+  right: 0;
+  z-index: 999;
+  margin: 0;
+  padding: 0;
+  font-size: 8pt;
+  color: #0F0;
+}
+
+#stats p {
+  margin: 0.25em;
+  padding: 0.25em;
+  border-bottom: solid 1px #060;
+}

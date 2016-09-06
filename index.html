@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>HexGrid</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+  <body oncontextmenu="return false;">
+    <canvas id="hexgrid"></canvas>
+    <div id="stats">
+      <p>
+        <abbr title="Frames Per Second">FPS</abbr>:
+        <span id="stats-fps">123</span>
+      </p>
+      <p>
+        <abbr title="delta-T since beginning of last frame">dT-F</abbr>:
+        <span id="stats-dt_f"></span>
+      </p>
+      <p>
+        <abbr title="delta-T for simulation.applyGravity()">dT-G</abbr>:
+        <span id="stats-dt_g"></span>
+      </p>
+      <p>
+        <abbr title="delta-T for whole frame">dT-T</abbr>:
+        <span id="stats-dt_t"></span>
+      </p>
+    </div>
+    <p class="copyleft">
+      <strong>HexGrid 0.0.0</strong> &copy; 2016 Jeffrey W. Tickle
+      [<a href="http://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">GPLv3</a>]
+      [<a href="https://github.com/jtickle/hexgrid" target="_blank">Source</a>]
+    </p>
+
+    <script src="hexgrid.js"></script>
+  </body>
+</html>

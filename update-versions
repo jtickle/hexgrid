@@ -1,0 +1,8 @@
+#!/bin/sh
+
+sed -i 's/"version": "\([0-9]\+\.[0-9]\+\)\.\(-\?[0-9]\+\)"/echo '"'"' '"'"' \\"version\\": \\"\1.$((\2+1))\\"/e' package.json
+
+VERSION=$(grep '^  "version":' package.json | cut -d '"' -f 4)
+echo Version increased to $VERSION
+
+sed -i 's/<strong>HexGrid [0-9]\+\.[0-9]\+\.-\?[0-9]\+<\/strong>/<strong>HexGrid '$VERSION'<\/strong>/' index.html
