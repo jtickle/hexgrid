@@ -15,3 +15,103 @@
 # section 4, provided you include this license notice and a URL
 # through which recipients can access the Corresponding Source.
 # 
+
+module.exports = class Input
+  constructor: (@gq, @rq) ->
+    @active = false
+
+    @CLICK_TIMEOUT = 300
+    @CLICK_THRESHOLD = 25
+
+    @mouse =
+      x:  0
+      y:  0
+      w:  0
+      wm: 0
+      l:  false
+      m:  false
+      r:  false
+      a:  false
+      b:  false
+
+    @touch =
+      touches: {}
+      pinch: null
+      average: null
+
+  updateMouseData: (e) =>
+    @rq.q('updateCursor', e.clientX, e.clientY)
+    @mouse.x = e.clientX
+    @mouse.y = e.clientY
+    @mouse.l = (e.buttons & 1 == 1)
+    @mouse.m = (e.buttons & 4 == 4) # [sic]
+    @mouse.r = (e.buttons & 2 == 2) # [sic]
+    @mouse.a = (e.buttons & 8 == 8)
+    @mouse.b = (e.buttons & 16 == 16)
+
+  mouseMoveViewport: (e, m) =>
+    @rq.q('pan', e.clientX - m.x, e.clientY - m.y)
+
+  moveOnNotClick: () =>
+    @rq.q('pan', @mouse.x - @mouse.saveX, @mouse.y - @mouse.saveY)
+    delete @mouse.clickTimer
+    delete @mouse.saveX
+    delete @mouse.saveY
+
+  onMouseDown: (e) =>
+    if(e.buttons & 1)
+      @mouse.saveX = e.clientX
+      @mouse.saveY = e.clientY
+      @mouse.clickTimer = setTimeout(@moveOnNotClick, @CLICK_TIMEOUT)
+    @updateMouseData(e)
+    undefined
+  
+  onMouseUp: (e) =>
+    if(@mouse.l)
+      if(@mouse.clickTimer)
+        clearTimeout(@mouse.clickTimer)
+        delete @mouse.clickTimer
+        delete @mouse.saveX
+        delete @mouse.saveY
+        pos = @rq.target.screenToHex([e.clientX, e.clientY])
+        @gq.q('toggleSelect', pos)
+      else
+        @mouseMoveViewport(e, @mouse)
+    @updateMouseData(e)
+    undefined
+
+  onMouseMove: (e) =>
+    if @mouse.l
+      if @mouse.clickTimer?
+        if(Math.sqrt(Math.pow(e.clientX - @mouse.saveX, 2) + Math.pow(e.clientY - @mouse.saveY, 2)) > @CLICK_THRESHOLD)
+          clearTimeout(@mouse.clickTimer)
+          @moveOnNotClick()
+      else
+        document.body.style.cursor = "move"
+        @mouseMoveViewport(e, @mouse)
+    else
+      document.body.style.cursor = "default"
+    @updateMouseData(e)
+    undefined
+
+  onWheel: (e) =>
+    @mouse.w = e.deltaY
+    @mouse.wm = e.deltaMode
+    @updateMouseData(e)
+
+    @rq.q('updateCursor', e.clientX, e.clientY)
+    @rq.q('zoom', e.deltaY / 1000)
+    undefined
+
+  doListeners: (fn) =>
+    fn("mousedown",   @onMouseDown)
+    fn("mouseup",     @onMouseUp)
+    fn("mousemove",   @onMouseMove)
+    fn("wheel",       @onWheel)
+    this
+
+  activate: (el) =>
+    @doListeners(el.addEventListener)
+
+  deactivate: (el) =>
+    @doListeners(el.removeEventListener)

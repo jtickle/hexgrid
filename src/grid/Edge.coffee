@@ -34,7 +34,6 @@ module.exports = class Edge
       throw 'Too many sides in edge pairing'
     @neighbors[1-i]
 
-  getHighestPriority: () =>
     if(!@neighbors[1]? or @neighbors[0].priority <= @neighbors[1].priority)
       @neighbors[0]
     else

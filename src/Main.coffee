@@ -19,12 +19,14 @@
 Renderer    = require 'Renderer'
 Grid        = require 'grid/Grid'
 ActionQueue = require 'ActionQueue'
+Input       = require 'Input'
 
 run = () ->
   renderer = new Renderer('#000000', '#FFFFFF', 'hexgrid', 50)
   rq       = new ActionQueue(renderer)
   grid     = new Grid(4)
   gq       = new ActionQueue(grid)
+  input    = new Input(gq, rq)
 
   pt       = 0
 
@@ -39,6 +41,7 @@ run = () ->
       f: 0
       b: 0
       g: 0
+      r: 0
 
   timers = []
 
@@ -65,9 +68,16 @@ run = () ->
 
     if dt < 0 then return
 
+    rq.q('blank')
+    rq.q('drawGrid', grid)
+
+    time.begin()
+    gq.process()
+    stats.dt.g += time.end()
+
     time.begin()
     rq.process()
-    stats.dt.g += time.end()
+    stats.dt.r += time.end()
 
     # Calculate FPS
     stats.count++
@@ -76,11 +86,13 @@ run = () ->
       justShowStat('fps', stats.count)
       showStat('dt_f', stats.dt.f, stats.count)
       showStat('dt_g', stats.dt.g, stats.count)
+      showStat('dt_r', stats.dt.r, stats.count)
       showStat('dt_t', stats.dt.t, stats.count)
       stats.cursec = sec
       stats.count = 0
       stats.dt.f = 0
       stats.dt.g = 0
+      stats.dt.r = 0
       stats.dt.t = 0
 
     pt = ct
@@ -90,10 +102,7 @@ run = () ->
 
     requestAnimationFrame(animate)
 
-  # Initialization
-  rq.q('blank')
-  rq.q('drawGrid', grid)
-
+  input.activate(renderer.view)
   animate(0)
 
 

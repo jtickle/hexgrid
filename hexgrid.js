@@ -8181,7 +8181,7 @@
 /* 298 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var ActionQueue, Grid, Renderer, run;
+	var ActionQueue, Grid, Input, Renderer, run;
 	
 	Renderer = __webpack_require__(299);
 	
@@ -8189,12 +8189,15 @@
 	
 	ActionQueue = __webpack_require__(303);
 	
+	Input = __webpack_require__(304);
+	
 	run = function() {
-	  var animate, floor5, gq, grid, justShowStat, pt, renderer, rq, showStat, stats, time, timers;
+	  var animate, floor5, gq, grid, input, justShowStat, pt, renderer, rq, showStat, stats, time, timers;
 	  renderer = new Renderer('#000000', '#FFFFFF', 'hexgrid', 50);
 	  rq = new ActionQueue(renderer);
 	  grid = new Grid(4);
 	  gq = new ActionQueue(grid);
+	  input = new Input(gq, rq);
 	  pt = 0;
 	  window.addEventListener("resize", function() {
 	    rq.q('blank');
@@ -8206,7 +8209,8 @@
 	    dt: {
 	      f: 0,
 	      b: 0,
-	      g: 0
+	      g: 0,
+	      r: 0
 	    }
 	  };
 	  timers = [];
@@ -8235,20 +8239,27 @@
 	    if (dt < 0) {
 	      return;
 	    }
+	    rq.q('blank');
+	    rq.q('drawGrid', grid);
+	    time.begin();
+	    gq.process();
+	    stats.dt.g += time.end();
 	    time.begin();
 	    rq.process();
-	    stats.dt.g += time.end();
+	    stats.dt.r += time.end();
 	    stats.count++;
 	    sec = Math.floor(ct / 1000);
 	    if (sec !== stats.cursec) {
 	      justShowStat('fps', stats.count);
 	      showStat('dt_f', stats.dt.f, stats.count);
 	      showStat('dt_g', stats.dt.g, stats.count);
+	      showStat('dt_r', stats.dt.r, stats.count);
 	      showStat('dt_t', stats.dt.t, stats.count);
 	      stats.cursec = sec;
 	      stats.count = 0;
 	      stats.dt.f = 0;
 	      stats.dt.g = 0;
+	      stats.dt.r = 0;
 	      stats.dt.t = 0;
 	    }
 	    pt = ct;
@@ -8256,8 +8267,7 @@
 	    timers.length = 0;
 	    return requestAnimationFrame(animate);
 	  };
-	  rq.q('blank');
-	  rq.q('drawGrid', grid);
+	  input.activate(renderer.view);
 	  return animate(0);
 	};
 	
@@ -8279,11 +8289,17 @@
 	    this.lineColor = lineColor;
 	    this.domId = domId;
 	    this.gridRadius = gridRadius;
+	    this.zoom = bind(this.zoom, this);
+	    this.pan = bind(this.pan, this);
+	    this.updateCursor = bind(this.updateCursor, this);
+	    this.setCenter = bind(this.setCenter, this);
 	    this.drawGrid = bind(this.drawGrid, this);
 	    this.drawGridSpace = bind(this.drawGridSpace, this);
 	    this.textGridSpace = bind(this.textGridSpace, this);
 	    this.strokeGridSpace = bind(this.strokeGridSpace, this);
 	    this.fillGridSpace = bind(this.fillGridSpace, this);
+	    this.getHighestPrioritySpace = bind(this.getHighestPrioritySpace, this);
+	    this.calculateRenderPriority = bind(this.calculateRenderPriority, this);
 	    this.blank = bind(this.blank, this);
 	    this.createHexLine = bind(this.createHexLine, this);
 	    this.screenToHex = bind(this.screenToHex, this);
@@ -8306,6 +8322,8 @@
 	    this.ctx = this.view.getContext('2d');
 	    this.centerX = 0;
 	    this.centerY = 0;
+	    this.mouseX = 0;
+	    this.mouseY = 0;
 	    this.scaleBase = 0;
 	    this.scale = 1;
 	    this.doResize();
@@ -8440,6 +8458,34 @@
 	    return this.ctx.restore();
 	  };
 	
+	  Renderer.prototype.calculateRenderPriority = function(space) {
+	    var val;
+	    val = 0;
+	    if (!space.selected) {
+	      val += 5;
+	    }
+	    switch (this.type) {
+	      case "OutOfBounds":
+	        val += 90;
+	        break;
+	      case "Empty":
+	        val += 10;
+	    }
+	    return val;
+	  };
+	
+	  Renderer.prototype.getHighestPrioritySpace = function(edge) {
+	    if (edge.neighbors[1] == null) {
+	      return edge.neighbors[0];
+	    } else {
+	      if (this.calculateRenderPriority(edge.neighbors[0]) <= this.calculateRenderPriority(edge.neighbors[1])) {
+	        return edge.neighbors[0];
+	      } else {
+	        return edge.neighbors[1];
+	      }
+	    }
+	  };
+	
 	  Renderer.prototype.fillGridSpace = function(pos, space) {
 	    var j, n, ref, ref1, x, y;
 	    this.ctx.save();
@@ -8465,19 +8511,16 @@
 	  };
 	
 	  Renderer.prototype.strokeGridSpace = function(pos, space) {
-	    var j, n, ref, ref1, x0, x1, y0, y1;
+	    var hipri, j, n, ref, ref1, x0, x1, y0, y1;
 	    this.ctx.save();
 	    for (n = j = 0; j <= 2; n = ++j) {
 	      ref = this.worldToScreen(this.hexCornerToWorld(pos, (6 - n - 1) % 6)), x0 = ref[0], y0 = ref[1];
 	      ref1 = this.worldToScreen(this.hexCornerToWorld(pos, (6 - n) % 6)), x1 = ref1[0], y1 = ref1[1];
+	      hipri = (space.edges[n] != null) ? this.getHighestPrioritySpace(space.edges[n]) : null;
 	      this.ctx.beginPath();
 	      this.ctx.moveTo(x0, y0);
 	      this.ctx.lineTo(x1, y1);
-	      if ((space.edges[n] != null) && space.edges[n].getHighestPriority().type === 'Empty') {
-	        this.ctx.strokeStyle = "#00FF00";
-	      } else {
-	        this.ctx.strokeStyle = "#FFFFFF";
-	      }
+	      this.ctx.strokeStyle = (hipri != null) && hipri.selected ? '#FF0000' : (hipri != null) && hipri.type !== 'OutOfBounds' ? '#00FF00' : '#999999';
 	      this.ctx.closePath();
 	      this.ctx.stroke();
 	    }
@@ -8489,9 +8532,11 @@
 	    this.ctx.save();
 	    ref = this.worldToScreen(this.hexCenterToWorld(pos)), x = ref[0], y = ref[1];
 	    this.ctx.fillStyle = '#000000';
-	    this.ctx.font = "12px sans-serif";
 	    this.ctx.textAlign = "center";
-	    this.ctx.fillText("" + pos[0] + ", " + pos[1], x, y);
+	    this.ctx.font = "" + Math.floor(14 / this.scale) + "px sans-serif";
+	    this.ctx.fillText(space.type, x, y);
+	    this.ctx.font = "" + Math.floor(12 / this.scale) + "px sans-serif";
+	    this.ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(30 / this.scale));
 	    return this.ctx.restore();
 	  };
 	
@@ -8503,13 +8548,13 @@
 	
 	  Renderer.prototype.drawGrid = function(grid) {
 	    var _, hex, j, len, ref, ref1, results, rowHex, x0, x1, y0, y1;
-	    ref = this.createHexLine(this.screenToHex([0, 0]), this.screenToHex([0, this.height]));
+	    ref = this.createHexLine(this.screenToHex([-this.gridRadius, -this.gridRadius]), this.screenToHex([-this.gridRadius, this.height + this.gridRadius]));
 	    results = [];
 	    for (j = 0, len = ref.length; j < len; j++) {
 	      rowHex = ref[j];
-	      x0 = 0;
+	      x0 = -this.gridRadius;
 	      ref1 = this.worldToScreen(this.hexCenterToWorld(rowHex)), _ = ref1[0], y0 = ref1[1];
-	      x1 = this.width;
+	      x1 = this.width + this.gridRadius;
 	      y1 = y0;
 	      results.push((function() {
 	        var k, len1, ref2, results1;
@@ -8523,6 +8568,29 @@
 	      }).call(this));
 	    }
 	    return results;
+	  };
+	
+	  Renderer.prototype.setCenter = function(x, y) {
+	    this.centerX = x;
+	    return this.centerY = y;
+	  };
+	
+	  Renderer.prototype.updateCursor = function(x, y) {
+	    this.mouseX = x;
+	    return this.mouseY = y;
+	  };
+	
+	  Renderer.prototype.pan = function(dx, dy) {
+	    return this.setCenter(this.centerX - dx * this.scale, this.centerY - dy * this.scale);
+	  };
+	
+	  Renderer.prototype.zoom = function(factor) {
+	    var dx, dy, ref, x, y;
+	    ref = this.screenToWorld([this.mouseX, this.mouseY]), x = ref[0], y = ref[1];
+	    dx = (x - this.centerX) / this.scale;
+	    dy = (y - this.centerY) / this.scale;
+	    this.setScaleBase(this.scaleBase + factor);
+	    return this.setCenter(x - (dx * this.scale), y - (dy * this.scale));
 	  };
 	
 	  return Renderer;
@@ -8559,6 +8627,7 @@
 	  function Grid(radius) {
 	    var I, J, i, j, k, l, len, len1, r, ref;
 	    this.radius = radius;
+	    this.toggleSelect = bind(this.toggleSelect, this);
 	    this.getSpace = bind(this.getSpace, this);
 	    this.maxv = this.radius - 1;
 	    this.diameter = (this.radius * 2) + 1;
@@ -8570,6 +8639,7 @@
 	      }
 	      return results;
 	    }).call(this);
+	    this.selected = null;
 	    ref = this.grid;
 	    for (i = k = 0, len = ref.length; k < len; i = ++k) {
 	      I = ref[i];
@@ -8578,7 +8648,6 @@
 	        J.connect(this);
 	      }
 	    }
-	    console.log(this.grid);
 	  }
 	
 	  Grid.prototype.getSpace = function(hex, connectChildren) {
@@ -8598,6 +8667,20 @@
 	    } else {
 	      return this.grid[i][j];
 	    }
+	  };
+	
+	  Grid.prototype.toggleSelect = function(pos) {
+	    var sp;
+	    sp = this.getSpace(pos);
+	    if ((this.selected != null)) {
+	      this.selected.selected = false;
+	    }
+	    if (sp.type === 'OutOfBounds' || this.selected === sp) {
+	      this.selected = null;
+	      return;
+	    }
+	    this.selected = sp;
+	    return this.selected.selected = true;
 	  };
 	
 	  return Grid;
@@ -8623,47 +8706,35 @@
 	    this.getNeighbor = bind(this.getNeighbor, this);
 	    this.connect = bind(this.connect, this);
 	    ref = this.pos, q = ref[0], r = ref[1];
-	    this.priority = (function() {
-	      switch (this.type) {
-	        case "OutOfBounds":
-	          return 999;
-	        case "Empty":
-	          return 0;
-	      }
-	    }).call(this);
 	    this.directions = [[q + 1, r], [q + 1, r - 1], [q, r - 1], [q - 1, r], [q - 1, r + 1], [q, r + 1]];
 	    this.edges = [null, null, null, null, null, null];
+	    this.selected = false;
 	  }
 	
 	  Space.prototype.connect = function(grid) {
-	    var d, i, j, k, len, len1, ref, ref1, results, results1, s;
+	    var d, i, j, k, len, len1, ref, ref1, s;
 	    if ((this.grid != null)) {
 	      throw 'Already Connected';
 	    }
 	    this.grid = grid;
 	    if (this.type === "OutOfBounds") {
 	      ref = this.directions;
-	      results = [];
 	      for (i = j = 0, len = ref.length; j < len; i = ++j) {
 	        d = ref[i];
 	        s = this.grid.getSpace(d, false);
 	        if ((s != null) && s.type !== "OutOfBounds" && (s.edges[(i + 3) % 6] != null)) {
-	          results.push(this.edges[i] = s.edges[(i + 3) % 6]);
-	        } else {
-	          results.push(void 0);
+	          this.edges[i] = s.edges[(i + 3) % 6];
 	        }
 	      }
-	      return results;
 	    } else {
 	      ref1 = this.directions;
-	      results1 = [];
 	      for (i = k = 0, len1 = ref1.length; k < len1; i = ++k) {
 	        d = ref1[i];
 	        s = this.grid.getSpace(d);
-	        results1.push(this.edges[i] = (s == null) || s.type === "OutOfBounds" || (s.edges[(i + 3) % 6] == null) ? new Edge(this) : s.edges[(i + 3) % 6].setNeighbor(this));
+	        this.edges[i] = (s == null) || s.type === "OutOfBounds" || (s.edges[(i + 3) % 6] == null) ? new Edge(this) : s.edges[(i + 3) % 6].setNeighbor(this);
 	      }
-	      return results1;
 	    }
+	    return void 0;
 	  };
 	
 	  Space.prototype.getNeighbor = function(d) {
@@ -8688,7 +8759,6 @@
 	
 	module.exports = Edge = (function() {
 	  function Edge(neighbor) {
-	    this.getHighestPriority = bind(this.getHighestPriority, this);
 	    this.getNeighbor = bind(this.getNeighbor, this);
 	    this.setNeighbor = bind(this.setNeighbor, this);
 	    this.neighbors = [neighbor];
@@ -8711,10 +8781,7 @@
 	    if (i > 2) {
 	      throw 'Too many sides in edge pairing';
 	    }
-	    return this.neighbors[1 - i];
-	  };
-	
-	  Edge.prototype.getHighestPriority = function() {
+	    this.neighbors[1 - i];
 	    if ((this.neighbors[1] == null) || this.neighbors[0].priority <= this.neighbors[1].priority) {
 	      return this.neighbors[0];
 	    } else {
@@ -8735,10 +8802,9 @@
 	  slice = [].slice;
 	
 	module.exports = ActionQueue = (function() {
-	  ActionQueue.prototype.queue = [];
-	
 	  function ActionQueue(target) {
 	    this.target = target;
+	    this.queue = [];
 	  }
 	
 	  ActionQueue.prototype.q = function() {
@@ -8753,7 +8819,6 @@
 	    while (this.queue.length > 0) {
 	      next = this.queue.shift();
 	      method = next.shift();
-	      console.log(this.target);
 	      if (this.target[method] == null) {
 	        throw "Requested handler is undefined: " + method;
 	      }
@@ -8763,6 +8828,146 @@
 	  };
 	
 	  return ActionQueue;
+
+	})();
+
+
+/***/ },
+/* 304 */
+/***/ function(module, exports) {
+
+	var Input,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = Input = (function() {
+	  function Input(gq, rq) {
+	    this.gq = gq;
+	    this.rq = rq;
+	    this.deactivate = bind(this.deactivate, this);
+	    this.activate = bind(this.activate, this);
+	    this.doListeners = bind(this.doListeners, this);
+	    this.onWheel = bind(this.onWheel, this);
+	    this.onMouseMove = bind(this.onMouseMove, this);
+	    this.onMouseUp = bind(this.onMouseUp, this);
+	    this.onMouseDown = bind(this.onMouseDown, this);
+	    this.moveOnNotClick = bind(this.moveOnNotClick, this);
+	    this.mouseMoveViewport = bind(this.mouseMoveViewport, this);
+	    this.updateMouseData = bind(this.updateMouseData, this);
+	    this.active = false;
+	    this.CLICK_TIMEOUT = 300;
+	    this.CLICK_THRESHOLD = 25;
+	    this.mouse = {
+	      x: 0,
+	      y: 0,
+	      w: 0,
+	      wm: 0,
+	      l: false,
+	      m: false,
+	      r: false,
+	      a: false,
+	      b: false
+	    };
+	    this.touch = {
+	      touches: {},
+	      pinch: null,
+	      average: null
+	    };
+	  }
+	
+	  Input.prototype.updateMouseData = function(e) {
+	    this.rq.q('updateCursor', e.clientX, e.clientY);
+	    this.mouse.x = e.clientX;
+	    this.mouse.y = e.clientY;
+	    this.mouse.l = e.buttons & 1 === 1;
+	    this.mouse.m = e.buttons & 4 === 4;
+	    this.mouse.r = e.buttons & 2 === 2;
+	    this.mouse.a = e.buttons & 8 === 8;
+	    return this.mouse.b = e.buttons & 16 === 16;
+	  };
+	
+	  Input.prototype.mouseMoveViewport = function(e, m) {
+	    return this.rq.q('pan', e.clientX - m.x, e.clientY - m.y);
+	  };
+	
+	  Input.prototype.moveOnNotClick = function() {
+	    this.rq.q('pan', this.mouse.x - this.mouse.saveX, this.mouse.y - this.mouse.saveY);
+	    delete this.mouse.clickTimer;
+	    delete this.mouse.saveX;
+	    return delete this.mouse.saveY;
+	  };
+	
+	  Input.prototype.onMouseDown = function(e) {
+	    if (e.buttons & 1) {
+	      this.mouse.saveX = e.clientX;
+	      this.mouse.saveY = e.clientY;
+	      this.mouse.clickTimer = setTimeout(this.moveOnNotClick, this.CLICK_TIMEOUT);
+	    }
+	    this.updateMouseData(e);
+	    return void 0;
+	  };
+	
+	  Input.prototype.onMouseUp = function(e) {
+	    var pos;
+	    if (this.mouse.l) {
+	      if (this.mouse.clickTimer) {
+	        clearTimeout(this.mouse.clickTimer);
+	        delete this.mouse.clickTimer;
+	        delete this.mouse.saveX;
+	        delete this.mouse.saveY;
+	        pos = this.rq.target.screenToHex([e.clientX, e.clientY]);
+	        this.gq.q('toggleSelect', pos);
+	      } else {
+	        this.mouseMoveViewport(e, this.mouse);
+	      }
+	    }
+	    this.updateMouseData(e);
+	    return void 0;
+	  };
+	
+	  Input.prototype.onMouseMove = function(e) {
+	    if (this.mouse.l) {
+	      if (this.mouse.clickTimer != null) {
+	        if (Math.sqrt(Math.pow(e.clientX - this.mouse.saveX, 2) + Math.pow(e.clientY - this.mouse.saveY, 2)) > this.CLICK_THRESHOLD) {
+	          clearTimeout(this.mouse.clickTimer);
+	          this.moveOnNotClick();
+	        }
+	      } else {
+	        document.body.style.cursor = "move";
+	        this.mouseMoveViewport(e, this.mouse);
+	      }
+	    } else {
+	      document.body.style.cursor = "default";
+	    }
+	    this.updateMouseData(e);
+	    return void 0;
+	  };
+	
+	  Input.prototype.onWheel = function(e) {
+	    this.mouse.w = e.deltaY;
+	    this.mouse.wm = e.deltaMode;
+	    this.updateMouseData(e);
+	    this.rq.q('updateCursor', e.clientX, e.clientY);
+	    this.rq.q('zoom', e.deltaY / 1000);
+	    return void 0;
+	  };
+	
+	  Input.prototype.doListeners = function(fn) {
+	    fn("mousedown", this.onMouseDown);
+	    fn("mouseup", this.onMouseUp);
+	    fn("mousemove", this.onMouseMove);
+	    fn("wheel", this.onWheel);
+	    return this;
+	  };
+	
+	  Input.prototype.activate = function(el) {
+	    return this.doListeners(el.addEventListener);
+	  };
+	
+	  Input.prototype.deactivate = function(el) {
+	    return this.doListeners(el.removeEventListener);
+	  };
+	
+	  return Input;
 
 	})();
 

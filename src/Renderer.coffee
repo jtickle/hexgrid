@@ -26,6 +26,10 @@ module.exports = class Renderer
     @centerX = 0
     @centerY = 0
 
+    # Last known mouse cursor in screenspace
+    @mouseX = 0
+    @mouseY = 0
+
     # The base scale setting (Integer from -inf to +inf where
     # 0 = scale of 1:1 and negative gives you a wider perspective)
     @scaleBase = 0
@@ -140,6 +144,24 @@ module.exports = class Renderer
     @ctx.fillRect(0, 0, @width, @height)
     @ctx.restore()
 
+  calculateRenderPriority: (space) =>
+    val = 0
+    if !space.selected
+      val += 5
+    switch @type
+      when "OutOfBounds" then val += 90
+      when "Empty"       then val += 10
+    val
+
+  getHighestPrioritySpace: (edge) =>
+    if !edge.neighbors[1]?
+      edge.neighbors[0]
+    else
+      if @calculateRenderPriority(edge.neighbors[0]) <= @calculateRenderPriority(edge.neighbors[1])
+        edge.neighbors[0]
+      else
+        edge.neighbors[1]
+
   fillGridSpace: (pos, space) =>
     @ctx.save()
     
@@ -168,13 +190,21 @@ module.exports = class Renderer
       [x0,y0] = @worldToScreen(@hexCornerToWorld(pos, (6-n-1)%6))
       [x1,y1] = @worldToScreen(@hexCornerToWorld(pos, (6-n)%6))
 
+      hipri = if(space.edges[n]?)
+        @getHighestPrioritySpace(space.edges[n])
+      else
+        null
+
       @ctx.beginPath()
       @ctx.moveTo(x0,y0)
       @ctx.lineTo(x1,y1)
-      if space.edges[n]? and space.edges[n].getHighestPriority().type == 'Empty'
-        @ctx.strokeStyle = "#00FF00" 
-      else 
-        @ctx.strokeStyle = "#FFFFFF"
+      @ctx.strokeStyle =
+        if hipri? and hipri.selected
+          '#FF0000'
+        else if hipri? and hipri.type != 'OutOfBounds'
+          '#00FF00'
+        else
+          '#999999'
       @ctx.closePath()
       @ctx.stroke()
 
@@ -186,9 +216,11 @@ module.exports = class Renderer
     [x,y] = @worldToScreen(@hexCenterToWorld(pos))
 
     @ctx.fillStyle = '#000000'
-    @ctx.font = "12px sans-serif"
     @ctx.textAlign = "center"
-    @ctx.fillText("" + pos[0] + ", " + pos[1], x, y)
+    @ctx.font = "" + Math.floor(14 / @scale) + "px sans-serif"
+    @ctx.fillText(space.type, x, y)
+    @ctx.font = "" + Math.floor(12 / @scale) + "px sans-serif"
+    @ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(30 / @scale))
 
     @ctx.restore()
   
@@ -198,11 +230,31 @@ module.exports = class Renderer
     @textGridSpace(pos, space)
 
   drawGrid: (grid) =>
-
-    for rowHex in @createHexLine(@screenToHex([0,0]), @screenToHex([0,@height]))
-      x0 = 0
+    for rowHex in @createHexLine(@screenToHex([-@gridRadius,-@gridRadius]),
+                                 @screenToHex([-@gridRadius,@height + @gridRadius]))
+      x0 = -@gridRadius
       [_,y0] = @worldToScreen(@hexCenterToWorld(rowHex))
-      x1 = @width
+      x1 = @width + @gridRadius
       y1 = y0
       for hex in @createHexLine(@screenToHex([x0,y0]), @screenToHex([x1,y1]))
         @drawGridSpace(hex, grid.getSpace(hex))
+
+  setCenter: (x, y) =>
+    @centerX = x
+    @centerY = y
+
+  updateCursor: (x, y) =>
+    @mouseX = x
+    @mouseY = y
+
+  pan: (dx, dy) =>
+    @setCenter(@centerX - dx * @scale,
+               @centerY - dy * @scale)
+
+  zoom: (factor) =>
+    [x,y] = @screenToWorld([@mouseX, @mouseY])
+    dx = (x - @centerX) / @scale
+    dy = (y - @centerY) / @scale
+    @setScaleBase(@scaleBase + factor)
+    @setCenter(x - (dx * @scale),
+               y - (dy * @scale))

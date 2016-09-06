@@ -34,11 +34,11 @@ module.exports = class Grid
 
     @grid = (mkRow(this, r) for r in [-@maxv .. @maxv])
 
+    @selected = null
+
     for I, i in @grid
       for J, j in I
         J.connect(this)
-
-    console.log(@grid)
 
   getSpace: (hex, connectChildren = true) =>
     [q, r] = hex
@@ -51,3 +51,16 @@ module.exports = class Grid
       ts
     else
       @grid[i][j]
+
+  toggleSelect: (pos) =>
+    sp = @getSpace(pos)
+
+    if(@selected?)
+      @selected.selected = false
+
+    if sp.type == 'OutOfBounds' or @selected == sp
+      @selected = null
+      return
+ 
+    @selected = sp
+    @selected.selected = true

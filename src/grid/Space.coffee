@@ -23,16 +23,14 @@ module.exports = class Space
 
     [q,r] = @pos
 
-    @priority = switch @type
-      when "OutOfBounds" then 999
-      when "Empty"       then 0
-
     @directions = [
       [q+1, r], [q+1, r-1], [q, r-1],
       [q-1, r], [q-1, r+1], [q, r+1]
     ]
 
     @edges = [null,null,null,null,null,null]
+
+    @selected = false
 
   connect: (grid) =>
     if(@grid?)
@@ -51,6 +49,7 @@ module.exports = class Space
           new Edge(this)
         else
           s.edges[(i+3)%6].setNeighbor(this)
+    undefined
 
   getNeighbor: (d) =>
     @edges[d].getNeighbor(this)

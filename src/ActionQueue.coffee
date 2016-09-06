@@ -17,8 +17,8 @@
 # 
 
 module.exports = class ActionQueue
-  queue: []
   constructor: (@target) ->
+    @queue = []
 
   q: (m...) ->
     @queue.push(m)
@@ -27,7 +27,6 @@ module.exports = class ActionQueue
     while @queue.length > 0
       next = @queue.shift()
       method = next.shift()
-      console.log(@target)
       if !@target[method]?
         throw "Requested handler is undefined: " + method
 
