@@ -64,8 +64,8 @@ module.exports = class Renderer
 
   worldToHex: (pos) =>
     [x,y] = pos
-    [(x * Math.sqrt(3) / 3 - y / 3) / @gridRadius,
-     y * 2/3 / @gridRadius]
+    [x * 2/3 / @gridRadius,
+     (-x / 3 + Math.sqrt(3)/3 * y) / @gridRadius]
 
   hexToCube: (h) =>
     x = h[0]
@@ -119,14 +119,14 @@ module.exports = class Renderer
 
   hexCenterToWorld: (hex) =>
     [hq,hr] = hex
-    x = @gridRadius * Math.sqrt(3) * (hq + hr/2)
-    y = @gridRadius * 3/2 * hr
+    x = @gridRadius * 3/2 * hq
+    y = @gridRadius * Math.sqrt(3) * (hr + hq/2)
     [x,y]
   
   hexCornerToWorld: (hex, corner) =>
     [hq,hr] = hex
     [cx,cy] = @hexCenterToWorld(hex)
-    theta = Math.PI / 180 * (60 * corner + 30)
+    theta = Math.PI / 180 * (60 * corner)
 
     [cx + @gridRadius * Math.cos(theta),
      cy + @gridRadius * Math.sin(theta)]
@@ -235,7 +235,8 @@ module.exports = class Renderer
       x0 = -@gridRadius
       [_,y0] = @worldToScreen(@hexCenterToWorld(rowHex))
       x1 = @width + @gridRadius
-      y1 = y0
+      y1 = y0 + 5
+      y0 = y0 - 5
       for hex in @createHexLine(@screenToHex([x0,y0]), @screenToHex([x1,y1]))
         @drawGridSpace(hex, grid.getSpace(hex))
 

@@ -8359,7 +8359,7 @@
 	  Renderer.prototype.worldToHex = function(pos) {
 	    var x, y;
 	    x = pos[0], y = pos[1];
-	    return [(x * Math.sqrt(3) / 3 - y / 3) / this.gridRadius, y * 2 / 3 / this.gridRadius];
+	    return [x * 2 / 3 / this.gridRadius, (-x / 3 + Math.sqrt(3) / 3 * y) / this.gridRadius];
 	  };
 	
 	  Renderer.prototype.hexToCube = function(h) {
@@ -8424,8 +8424,8 @@
 	  Renderer.prototype.hexCenterToWorld = function(hex) {
 	    var hq, hr, x, y;
 	    hq = hex[0], hr = hex[1];
-	    x = this.gridRadius * Math.sqrt(3) * (hq + hr / 2);
-	    y = this.gridRadius * 3 / 2 * hr;
+	    x = this.gridRadius * 3 / 2 * hq;
+	    y = this.gridRadius * Math.sqrt(3) * (hr + hq / 2);
 	    return [x, y];
 	  };
 	
@@ -8433,7 +8433,7 @@
 	    var cx, cy, hq, hr, ref, theta;
 	    hq = hex[0], hr = hex[1];
 	    ref = this.hexCenterToWorld(hex), cx = ref[0], cy = ref[1];
-	    theta = Math.PI / 180 * (60 * corner + 30);
+	    theta = Math.PI / 180 * (60 * corner);
 	    return [cx + this.gridRadius * Math.cos(theta), cy + this.gridRadius * Math.sin(theta)];
 	  };
 	
@@ -8555,7 +8555,8 @@
 	      x0 = -this.gridRadius;
 	      ref1 = this.worldToScreen(this.hexCenterToWorld(rowHex)), _ = ref1[0], y0 = ref1[1];
 	      x1 = this.width + this.gridRadius;
-	      y1 = y0;
+	      y1 = y0 + 5;
+	      y0 = y0 - 5;
 	      results.push((function() {
 	        var k, len1, ref2, results1;
 	        ref2 = this.createHexLine(this.screenToHex([x0, y0]), this.screenToHex([x1, y1]));

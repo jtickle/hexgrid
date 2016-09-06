@@ -1,6 +1,6 @@
 {
   "name": "hexgrid",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Just playing with a hex grid on canvas",
   "main": "Main.js",
   "scripts": {
