@@ -40,26 +40,38 @@ module.exports = class Grid
       for J, j in I
         J.connect(this)
 
-  getSpace: (hex, connectChildren = true) =>
+  getSpace: (hex) =>
     [q, r] = hex
     i = r + @maxv
     j = q + @maxv + Math.min(0, r)
 
     if i < 0 or j < 0 or i >= @grid.length or j >= @grid[i].length
-      ts = new Space([q, r], 'OutOfBounds')
-      if connectChildren then ts.connect(this)
-      ts
+      null
     else
       @grid[i][j]
+
+  getRect: ([cq, cr], [qq,qr], [rq,rr]) =>
+
+    rectCt = 0
+
+    for r in [qr .. qr + (rr - qr)]
+      for q in [Math.min(qq - 1 - (2 * rectCt), rq) .. Math.min(rq + 1 + (2*rectCt),qq)]
+        s = @getSpace([q,r])
+        if(!s?)
+          continue
+        else
+          yield s
+      rectCt++
+
 
   toggleSelect: (pos) =>
     sp = @getSpace(pos)
     console.log sp
 
-    if(@selected?)
+    if @selected?
       @selected.selected = false
 
-    if sp.type == 'OutOfBounds' or @selected == sp
+    if @selected == sp || !sp?
       @selected = null
       return
  

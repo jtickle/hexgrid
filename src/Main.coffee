@@ -16,23 +16,25 @@
 # through which recipients can access the Corresponding Source.
 # 
 
-Renderer    = require 'Renderer'
+#Renderer    = require 'Renderer'
 Grid        = require 'grid/Grid'
 ActionQueue = require 'ActionQueue'
 Input       = require 'Input'
+Scene       = require 'gfx/Scene'
 
 run = () ->
-  renderer = new Renderer('hexgrid', 50)
-  rq       = new ActionQueue(renderer)
+  #renderer = new Renderer('hexgrid', 50)
+  #rq       = new ActionQueue(renderer)
   grid     = new Grid(4)
   gq       = new ActionQueue(grid)
-  input    = new Input(gq, rq)
+  #input    = new Input(gq, rq)
+  scene    = new Scene('hexgrid', 50, grid)
 
   pt       = 0
 
   window.addEventListener "resize", () ->
-    rq.q('blank')
-    rq.q('drawGrid', grid)
+    #rq.q('blank')
+    #rq.q('drawGrid', grid)
 
   stats =
     cursec: 0
@@ -68,16 +70,18 @@ run = () ->
 
     if dt < 0 then return
 
-    rq.q('blank')
-    rq.q('drawGrid', grid)
+    #rq.q('blank')
+    #rq.q('drawGrid', grid)
 
     time.begin()
     gq.process()
     stats.dt.g += time.end()
 
     time.begin()
-    rq.process()
+    #rq.process()
     stats.dt.r += time.end()
+
+    scene.render()
 
     # Calculate FPS
     stats.count++
@@ -102,7 +106,7 @@ run = () ->
 
     requestAnimationFrame(animate)
 
-  input.activate(renderer.view)
+    #input.activate(renderer.view)
   animate(0)
 
 

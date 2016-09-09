@@ -37,19 +37,19 @@ module.exports = class Space
       throw 'Already Connected'
     @grid = grid
 
-    if @type == "OutOfBounds"
-      for d, i in @directions
-        s = @grid.getSpace(d, false)
-        if s? and s.type != "OutOfBounds" and s.edges[(i+3)%6]?
-          @edges[i] = s.edges[(i+3)%6]
-    else
-      for d, i in @directions
-        s = @grid.getSpace(d)
-        @edges[i] = if !s? or s.type == "OutOfBounds" or !s.edges[(i+3)%6]?
-          new Edge(this)
-        else
-          s.edges[(i+3)%6].setNeighbor(this)
+    for d, i in @directions
+      s = @grid.getSpace(d)
+      @edges[i] = if !s? || !s.getOppositeEdge(i)
+        new Edge(this)
+      else
+        s.getOppositeEdge(i).setNeighbor(this)
     undefined
+
+  getEdge: (d) =>
+    @edges[d%6]
+
+  getOppositeEdge: (d) =>
+    @getEdge(d+3)
 
   getNeighbor: (d) =>
     @edges[d].getNeighbor(this)

@@ -8295,9 +8295,9 @@
 	  Renderer.prototype.height = 0;
 	
 	  Renderer.prototype.color = {
-	    bgOut: '#666',
+	    bgOut: '#333',
 	    bgIn: '#CCC',
-	    lineOut: '#777',
+	    lineOut: '#222',
 	    lineIn: '#333',
 	    lineSel: '#0C0',
 	    error: '#F00',
@@ -8483,9 +8483,6 @@
 	      val += 5;
 	    }
 	    switch (this.type) {
-	      case "OutOfBounds":
-	        val += 90;
-	        break;
 	      case "Empty":
 	        val += 10;
 	    }
@@ -8506,6 +8503,11 @@
 	
 	  Renderer.prototype.fillGridSpace = function(pos, space) {
 	    var j, n, ref, ref1, x, y;
+	    if (space === null) {
+	      space = {
+	        type: 'OutOfBounds'
+	      };
+	    }
 	    this.ctx.save();
 	    this.ctx.beginPath();
 	    ref = this.worldToScreen(this.hexCornerToWorld(pos, 5)), x = ref[0], y = ref[1];
@@ -8534,10 +8536,9 @@
 	    for (n = j = 0; j <= 2; n = ++j) {
 	      ref = this.worldToScreen(this.hexCornerToWorld(pos, n - 1)), x0 = ref[0], y0 = ref[1];
 	      ref1 = this.worldToScreen(this.hexCornerToWorld(pos, n)), x1 = ref1[0], y1 = ref1[1];
-	      hipri = (space.edges[n] != null) ? this.getHighestPrioritySpace(space.edges[n]) : null;
+	      hipri = (space != null) && (space.edges[n] != null) ? this.getHighestPrioritySpace(space.edges[n]) : null;
 	      this.ctx.beginPath();
-	      this.ctx.lineWidth = 4;
-	      this.ctx.strokeStyle = (hipri != null) && hipri.selected ? (this.ctx.lineWidth = 8, this.color.lineSel) : (hipri != null) && hipri.type !== 'OutOfBounds' ? this.color.lineIn : this.color.lineOut;
+	      this.ctx.strokeStyle = (hipri != null) && hipri.selected ? this.color.lineSel : hipri != null ? this.color.lineIn : this.color.lineOut;
 	      this.ctx.moveTo(x0, y0);
 	      this.ctx.lineTo(x1, y1);
 	      this.ctx.closePath();
@@ -8562,30 +8563,19 @@
 	  Renderer.prototype.drawGridSpace = function(pos, space) {
 	    this.fillGridSpace(pos, space);
 	    this.strokeGridSpace(pos, space);
-	    return this.textGridSpace(pos, space);
+	    if ((space != null)) {
+	      return this.textGridSpace(pos, space);
+	    }
 	  };
 	
 	  Renderer.prototype.drawGrid = function(grid) {
-	    var _, hex, j, len, ref, ref1, results, rowHex, x0, x1, y0, y1;
-	    ref = this.createHexLine(this.screenToHex([-this.gridRadius, -this.gridRadius]), this.screenToHex([-this.gridRadius, this.height + this.gridRadius]));
+	    var j, len, ref, results, space;
+	    ref = grid.getRect(this.screenToHex([0, 0]), this.screenToHex([this.width, this.height]));
 	    results = [];
 	    for (j = 0, len = ref.length; j < len; j++) {
-	      rowHex = ref[j];
-	      x0 = -this.gridRadius;
-	      ref1 = this.worldToScreen(this.hexCenterToWorld(rowHex)), _ = ref1[0], y0 = ref1[1];
-	      x1 = this.width + this.gridRadius;
-	      y1 = y0 + 5;
-	      y0 = y0 - 5;
-	      results.push((function() {
-	        var k, len1, ref2, results1;
-	        ref2 = this.createHexLine(this.screenToHex([x0, y0]), this.screenToHex([x1, y1]));
-	        results1 = [];
-	        for (k = 0, len1 = ref2.length; k < len1; k++) {
-	          hex = ref2[k];
-	          results1.push(this.drawGridSpace(hex, grid.getSpace(hex)));
-	        }
-	        return results1;
-	      }).call(this));
+	      space = ref[j];
+	      console.log(space);
+	      results.push(this.drawGridSpace(space.pos, space));
 	    }
 	    return results;
 	  };
@@ -8641,6 +8631,7 @@
 	    var I, J, i, j, k, l, len, len1, r, ref;
 	    this.radius = radius;
 	    this.toggleSelect = bind(this.toggleSelect, this);
+	    this.getRect = bind(this.getRect, this);
 	    this.getSpace = bind(this.getSpace, this);
 	    this.maxv = this.radius - 1;
 	    this.diameter = (this.radius * 2) + 1;
@@ -8663,23 +8654,37 @@
 	    }
 	  }
 	
-	  Grid.prototype.getSpace = function(hex, connectChildren) {
-	    var i, j, q, r, ts;
-	    if (connectChildren == null) {
-	      connectChildren = true;
-	    }
+	  Grid.prototype.getSpace = function(hex) {
+	    var i, j, q, r;
 	    q = hex[0], r = hex[1];
 	    i = r + this.maxv;
 	    j = q + this.maxv + Math.min(0, r);
 	    if (i < 0 || j < 0 || i >= this.grid.length || j >= this.grid[i].length) {
-	      ts = new Space([q, r], 'OutOfBounds');
-	      if (connectChildren) {
-	        ts.connect(this);
-	      }
-	      return ts;
+	      return null;
 	    } else {
 	      return this.grid[i][j];
 	    }
+	  };
+	
+	  Grid.prototype.getRect = function*(arg, arg1) {
+	    var k, q, qq, qr, r, rectCt, ref, ref1, results, rq, rr;
+	    qq = arg[0], qr = arg[1];
+	    rq = arg1[0], rr = arg1[1];
+	    console.log('derp');
+	    console.log(qq, qr, rq, rr);
+	    rectCt = 0;
+	    results = [];
+	    for (r = k = ref = qr, ref1 = qr + (rr - cr); ref <= ref1 ? k <= ref1 : k >= ref1; r = ref <= ref1 ? ++k : --k) {
+	      results.push((yield* (function*() {
+	        var l, ref2, ref3, results1;
+	        results1 = [];
+	        for (q = l = ref2 = Math.min(qq - 1 - (2 * rectCt), rq), ref3 = Math.min(rq + 1 + (2 * realCt), qq); ref2 <= ref3 ? l <= ref3 : l >= ref3; q = ref2 <= ref3 ? ++l : --l) {
+	          results1.push((yield getSpace([q, r])));
+	        }
+	        return results1;
+	      })()));
+	    }
+	    return results;
 	  };
 	
 	  Grid.prototype.toggleSelect = function(pos) {
@@ -8689,7 +8694,7 @@
 	    if ((this.selected != null)) {
 	      this.selected.selected = false;
 	    }
-	    if (sp.type === 'OutOfBounds' || this.selected === sp) {
+	    if (this.selected === sp) {
 	      this.selected = null;
 	      return;
 	    }
@@ -8718,6 +8723,8 @@
 	    this.type = type;
 	    this.getDirectionFromEdge = bind(this.getDirectionFromEdge, this);
 	    this.getNeighbor = bind(this.getNeighbor, this);
+	    this.getOppositeEdge = bind(this.getOppositeEdge, this);
+	    this.getEdge = bind(this.getEdge, this);
 	    this.connect = bind(this.connect, this);
 	    ref = this.pos, q = ref[0], r = ref[1];
 	    this.directions = [[q + 1, r], [q + 1, r - 1], [q, r - 1], [q - 1, r], [q - 1, r + 1], [q, r + 1]];
@@ -8726,29 +8733,26 @@
 	  }
 	
 	  Space.prototype.connect = function(grid) {
-	    var d, i, j, k, len, len1, ref, ref1, s;
+	    var d, i, j, len, ref, s;
 	    if ((this.grid != null)) {
 	      throw 'Already Connected';
 	    }
 	    this.grid = grid;
-	    if (this.type === "OutOfBounds") {
-	      ref = this.directions;
-	      for (i = j = 0, len = ref.length; j < len; i = ++j) {
-	        d = ref[i];
-	        s = this.grid.getSpace(d, false);
-	        if ((s != null) && s.type !== "OutOfBounds" && (s.edges[(i + 3) % 6] != null)) {
-	          this.edges[i] = s.edges[(i + 3) % 6];
-	        }
-	      }
-	    } else {
-	      ref1 = this.directions;
-	      for (i = k = 0, len1 = ref1.length; k < len1; i = ++k) {
-	        d = ref1[i];
-	        s = this.grid.getSpace(d);
-	        this.edges[i] = (s == null) || s.type === "OutOfBounds" || (s.edges[(i + 3) % 6] == null) ? new Edge(this) : s.edges[(i + 3) % 6].setNeighbor(this);
-	      }
+	    ref = this.directions;
+	    for (i = j = 0, len = ref.length; j < len; i = ++j) {
+	      d = ref[i];
+	      s = this.grid.getSpace(d);
+	      this.edges[i] = (s == null) || !s.getOppositeEdge(i) ? new Edge(this) : s.getOppositeEdge(i).setNeighbor(this);
 	    }
 	    return void 0;
+	  };
+	
+	  Space.prototype.getEdge = function(d) {
+	    return this.edges[d % 6];
+	  };
+	
+	  Space.prototype.getOppositeEdge = function(d) {
+	    return this.getEdge(d + 3);
 	  };
 	
 	  Space.prototype.getNeighbor = function(d) {
