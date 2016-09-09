@@ -10,7 +10,9 @@ p.copyleft {
   bottom: 0;
   right: 0;
   z-index: 999;
-  margin: 0.5em;
+  margin: 0;
+  padding: 0.5em;
+  background: #333;
 }
 
 p.copyleft, p.copyleft a {
