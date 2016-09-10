@@ -39,15 +39,6 @@ module.exports = class Renderer
     @notifyResize()
     window.addEventListener("resize", @notifyResize)
 
-  setScaleBase: (s) =>
-    @scaleBase = s
-    @scale = Math.pow(Math.E, @scaleBase)
-    this
-
-  adjustScaleBase: (ds) =>
-    @setScaleBase(@scaleBase + ds)
-    this
-
   setCenter: (pos) =>
     @center = pos
 

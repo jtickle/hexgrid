@@ -22,59 +22,32 @@ module.exports = class Terrain
     @grid = @scene.grid
     @tfm  = @scene.tfm
     @hm   = @scene.hm
+    @ctx  = @scene.ctx
+    @hd   = @scene.hd
 
-  drawBackground: (ctx) =>
-    ctx.save()
+  drawBackground: () =>
+    @ctx.save()
 
     # Blank, dark background
-    ctx.fillStyle = @scene.color.bgOut
-    ctx.fillRect(0,0,@scene.width,@scene.height)
+    @ctx.fillStyle = @scene.color.bgOut
+    @ctx.fillRect(0,0,@scene.width,@scene.height)
 
-    ctx.restore()
+    @ctx.restore()
 
-  drawSides: (ctx, space, min, max) =>
-    [x,y] = @scene.tfm.worldToScreen(@hm.hexCornerToWorld(space.pos, min - 1))
-    ctx.moveTo(x,y)
+  render: (spaces) =>
+    @drawBackground()
 
-    for n in [min..max]
-      [x,y] = @scene.tfm.worldToScreen(@hm.hexCornerToWorld(space.pos, max))
-      ctx.lineTo(x, y)
-
-  drawAllSides: (ctx, space) =>
-    @drawSides(ctx, space, 0, 5)
-
-  fill: (ctx, space) =>
-    ctx.save()
-
-    console.log(ctx)
-
-    ctx.beginPath()
-    ctx.moveTo(50,50)
-    ctx.lineTo(100,100)
-    ctx.stroke()
-    ctx.closePath()
-
-    ctx.beginPath()
-    @drawAllSides(ctx, space)
-    ctx.closePath()
-    ctx.fillStyle = @scene.color.bgIn
-    #ctx.fillStyle = switch(space.type)
-    #  when "Empty" then @scene.color.bgIn
-    #  else @scene.color.error
-    ctx.fill()
-
-    ctx.restore()
-
-  onRender: (layer, rect, context) =>
-    r = rect
-    g = @grid.getRect(@tfm.screenToHex([r.x          , r.y           ]), # Vertex
-                      @tfm.screenToHex([r.x + r.width, r.y           ]), # maxQ
-                      @tfm.screenToHex([r.x          , r.y + r.height])) # maxR
-
-    @drawBackground(context)
-
-    while !(i = g.next()).done
+    while !(i = spaces.next()).done
       space = i.value
-      @fill(context, space)
+
+      fill = switch(space.type)
+        when "Empty" then @scene.color.bgIn
+        else @scene.color.error
+
+      stroke = @scene.color.lineIn
+
+      @hd.fillstroke(space, fill, stroke)
+
+      @hd.debugSpace(space)
 
     # TODO: Draw the Terrain Type for the space

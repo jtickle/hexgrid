@@ -17,7 +17,7 @@
 # 
 
 module.exports = class Input
-  constructor: (@gq, @rq) ->
+  constructor: (@sq) ->
     @active = false
 
     @CLICK_TIMEOUT = 300
@@ -52,10 +52,10 @@ module.exports = class Input
     [e.clientX, e.clientY]
 
   mouseMoveViewport: (e, m) =>
-    @rq.q('pan', e.clientX - m.x, e.clientY - m.y)
+    @sq.q('pan', e.clientX - m.x, e.clientY - m.y)
 
   moveOnNotClick: () =>
-    @rq.q('pan', @mouse.x - @mouse.saveX, @mouse.y - @mouse.saveY)
+    @sq.q('pan', @mouse.x - @mouse.saveX, @mouse.y - @mouse.saveY)
     delete @mouse.clickTimer
     delete @mouse.saveX
     delete @mouse.saveY
@@ -75,8 +75,7 @@ module.exports = class Input
         delete @mouse.clickTimer
         delete @mouse.saveX
         delete @mouse.saveY
-        pos = @rq.target.screenToHex(@getPos(e))
-        @gq.q('toggleSelect', pos)
+        @sq.q('click', @getPos(e))
       else
         @mouseMoveViewport(e, @mouse)
     @updateMouseData(e)
@@ -102,7 +101,7 @@ module.exports = class Input
     @updateMouseData(e)
     pos = @getPos(e)
 
-    @rq.q('zoom', pos, e.deltaY / 1000)
+    @sq.q('zoom', pos, e.deltaY / 1000)
     undefined
 
   doListeners: (fn) =>

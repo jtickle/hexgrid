@@ -54,6 +54,7 @@ module.exports = class Grid
 
     rectCt = 0
 
+    console.log(qr, qr + (rr - qr))
     for r in [qr .. qr + (rr - qr)]
       for q in [Math.min(qq - 1 - (2 * rectCt), rq) .. Math.min(rq + 1 + (2*rectCt),qq)]
         s = @getSpace([q,r])

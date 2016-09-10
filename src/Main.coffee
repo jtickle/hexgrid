@@ -16,25 +16,21 @@
 # through which recipients can access the Corresponding Source.
 # 
 
-#Renderer    = require 'Renderer'
 Grid        = require 'grid/Grid'
 ActionQueue = require 'ActionQueue'
 Input       = require 'Input'
 Scene       = require 'gfx/Scene'
 
 run = () ->
-  #renderer = new Renderer('hexgrid', 50)
-  #rq       = new ActionQueue(renderer)
   grid     = new Grid(4)
-  gq       = new ActionQueue(grid)
-  #input    = new Input(gq, rq)
   scene    = new Scene('hexgrid', 50, grid)
+  sq       = new ActionQueue(scene)
+  input    = new Input(sq)
 
   pt       = 0
 
   window.addEventListener "resize", () ->
-    #rq.q('blank')
-    #rq.q('drawGrid', grid)
+    sq.q('blank')
 
   stats =
     cursec: 0
@@ -42,7 +38,6 @@ run = () ->
     dt:
       f: 0
       b: 0
-      g: 0
       r: 0
 
   timers = []
@@ -70,15 +65,9 @@ run = () ->
 
     if dt < 0 then return
 
-    #rq.q('blank')
-    #rq.q('drawGrid', grid)
-
     time.begin()
-    gq.process()
-    stats.dt.g += time.end()
-
-    time.begin()
-    #rq.process()
+    sq.process()
+    scene.render()
     stats.dt.r += time.end()
 
     scene.render()
@@ -89,13 +78,11 @@ run = () ->
     if sec != stats.cursec
       justShowStat('fps', stats.count)
       showStat('dt_f', stats.dt.f, stats.count)
-      showStat('dt_g', stats.dt.g, stats.count)
       showStat('dt_r', stats.dt.r, stats.count)
       showStat('dt_t', stats.dt.t, stats.count)
       stats.cursec = sec
       stats.count = 0
       stats.dt.f = 0
-      stats.dt.g = 0
       stats.dt.r = 0
       stats.dt.t = 0
 
@@ -106,7 +93,7 @@ run = () ->
 
     requestAnimationFrame(animate)
 
-    #input.activate(renderer.view)
+  input.activate(scene.canvas)
   animate(0)
 
 

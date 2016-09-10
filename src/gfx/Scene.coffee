@@ -16,12 +16,12 @@
 # through which recipients can access the Corresponding Source.
 # 
 
-CanvasLayers = require('gfx/CanvasLayers')
 Terrain      = require('gfx/Terrain')
 Structures   = require('gfx/Structures')
 Entities     = require('gfx/Entities')
 Ui           = require('gfx/Ui')
 HexMath      = require('gfx/HexMath')
+HexDraw      = require('gfx/HexDraw')
 Transforms   = require('gfx/Transforms')
 
 module.exports = class Scene
@@ -39,60 +39,69 @@ module.exports = class Scene
     error:   '#F00'
     text:    '#333'
 
-  resizeNotify: []
-
   constructor: (@domId, @gridRadius, @grid) ->
     @canvas = document.getElementById(@domId)
     @ctx    = @canvas.getContext('2d')
 
     @hm  = new HexMath(@gridRadius)
     @tfm = new Transforms(this)
+    @hd  = new HexDraw(this)
 
     @terrain = new Terrain(this)
     @structures = new Structures(this)
     @entities = new Entities(this)
     @ui = new Ui(this)
 
-    @terrainLayer = new CanvasLayers.Container(@canvas, true)
-    @container = @terrainLayer
-    @terrainLayer.onRender = @terrain.onRender
-    @resizeNotify.push(@terrainLayer)
-
-    @structuresLayer = new CanvasLayers.Layer(0, 0, 100, 100)
-    @structuresLayer.onRender = @structures.onRender
-    @terrainLayer.getChildren().add(@structuresLayer)
-    @resizeNotify.push(@structuresLayer)
-    
-    @entitiesLayer = new CanvasLayers.Layer(0, 0, 100, 100)
-    @entitiesLayer.onRender = @entities.onRender
-    @structuresLayer.getChildren().add(@entitiesLayer)
-    @resizeNotify.push(@entitiesLayer)
-
-    @uiLayer = new CanvasLayers.Layer(0, 0, 100, 100)
-    @uiLayer.onRender = @ui.onRender
-    @entitiesLayer.getChildren().add(@uiLayer)
-    @resizeNotify.push(@uiLayer)
-
     @resize()
     window.addEventListener("resize", @resize)
 
   render: (dt) =>
     @dt = dt
-    @container.redraw()
+
+    g = @grid.getRect(@tfm.screenToHex([0         , 0          ]), # vertex
+                      @tfm.screenToHex([0 + @width, 0          ]), # maxQ
+                      @tfm.screenToHex([0         , 0 + @height])) # maxR
+
+    @terrain.render(g)
+    @structures.render(g)
+    @entities.render(g)
+    @ui.render(g)
+
+  setCenter: (pos) =>
+    @center = pos
+
+  setScaleBase: (s) =>
+    @scaleBase = s
+    @scale = Math.pow(Math.E, @scaleBase)
+    this
+
+  adjustScaleBase: (ds) =>
+    @setScaleBase(@scaleBase + ds)
+    this
 
   pan: (dx, dy) =>
+    [x,y] = @center
+    @setCenter([x - dx * @scale,
+                y - dy * @scale])
 
-  zoom: (ds) =>
+  zoom: (pos, ds) =>
+    [x,y] = @tfm.screenToWorld(pos)
+    [cx,cy] = @center
+    dx = (x - cx) / @scale
+    dy = (y - cy) / @scale
+    @adjustScaleBase(ds)
+    @setCenter([x - (dx * @scale),
+                y - (dy * @scale)])
+
+  click: (pos) =>
+    pos = @tfm.screenToHex(pos)
+    @grid.toggleSelect(pos)
 
   resize: () =>
     @width = document.documentElement.clientWidth
     @height = document.documentElement.clientHeight
-
-    @resizeNotify.map (v) =>
-      v.rect.width = @width
-      v.rect.height = @height
+    @canvas.width = @width
+    @canvas.height = @height
       
-
-    @container.markRectsDamaged()
     undefined
 

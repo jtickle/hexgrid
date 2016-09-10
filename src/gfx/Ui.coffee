@@ -23,10 +23,6 @@ module.exports = class Ui
     @grid = @scene.grid
     @tfm = @scene.tfm
 
-  onRender: (layer, rect, context) =>
-    r = rect
-    g = @grid.getRect(@tfm.screenToHex(r.x          , r.y           ), # Center
-                      @tfm.screenToHex(r.x + r.width, r.y           ), # maxQ
-                      @tfm.screenToHex(r.x          , r.y + r.height)) # maxR
+  render: (spaces) =>
 
     # TODO: Draw the Ui for the space
