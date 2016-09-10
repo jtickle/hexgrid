@@ -50,7 +50,7 @@ module.exports = class Grid
     else
       @grid[i][j]
 
-  getRect: ([cq, cr], [qq,qr], [rq,rr]) =>
+  getRect: ([vq,vr], [qq,qr], [rq,rr]) =>
 
     rectCt = 0
 

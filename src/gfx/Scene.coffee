@@ -93,7 +93,6 @@ module.exports = class Scene
       v.rect.height = @height
       
 
-    console.log(@resizeNotify)
     @container.markRectsDamaged()
     undefined
 

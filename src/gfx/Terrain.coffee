@@ -19,9 +19,9 @@
 module.exports = class Terrain
   constructor: (@scene) ->
 
-    @ctx = @scene.ctx
     @grid = @scene.grid
-    @tfm = @scene.tfm
+    @tfm  = @scene.tfm
+    @hm   = @scene.hm
 
   drawBackground: (ctx) =>
     ctx.save()
@@ -33,11 +33,11 @@ module.exports = class Terrain
     ctx.restore()
 
   drawSides: (ctx, space, min, max) =>
-    [x,y] = @scene.tfm.worldToScreen(@hexCornerToWorld(space.pos, min - 1))
+    [x,y] = @scene.tfm.worldToScreen(@hm.hexCornerToWorld(space.pos, min - 1))
     ctx.moveTo(x,y)
 
     for n in [min..max]
-      [x,y] = @scene.tfm.worldToScreen(@hexCornerToWorld(space.pos, max))
+      [x,y] = @scene.tfm.worldToScreen(@hm.hexCornerToWorld(space.pos, max))
       ctx.lineTo(x, y)
 
   drawAllSides: (ctx, space) =>
@@ -46,20 +46,30 @@ module.exports = class Terrain
   fill: (ctx, space) =>
     ctx.save()
 
+    console.log(ctx)
+
+    ctx.beginPath()
+    ctx.moveTo(50,50)
+    ctx.lineTo(100,100)
+    ctx.stroke()
+    ctx.closePath()
+
     ctx.beginPath()
     @drawAllSides(ctx, space)
-    ctx.fillStyle = switch(space.type)
-      when "Empty" then @scene.color.bgIn
-      else @scene.color.error
+    ctx.closePath()
+    ctx.fillStyle = @scene.color.bgIn
+    #ctx.fillStyle = switch(space.type)
+    #  when "Empty" then @scene.color.bgIn
+    #  else @scene.color.error
     ctx.fill()
 
     ctx.restore()
 
   onRender: (layer, rect, context) =>
     r = rect
-    g = @grid.getRect(@tfm.screenToHex(r.x          , r.y           ), # Center
-                      @tfm.screenToHex(r.x + r.width, r.y           ), # maxQ
-                      @tfm.screenToHex(r.x          , r.y + r.height)) # maxR
+    g = @grid.getRect(@tfm.screenToHex([r.x          , r.y           ]), # Vertex
+                      @tfm.screenToHex([r.x + r.width, r.y           ]), # maxQ
+                      @tfm.screenToHex([r.x          , r.y + r.height])) # maxR
 
     @drawBackground(context)
 
