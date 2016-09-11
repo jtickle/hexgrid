@@ -17,12 +17,6 @@ grid rendering code in this is entirely based on his page on
 up doing with this game, that portion of it will remain Free software since Amet
 chose to publish freely online.
 
-[Antony Dzeryn](http://simianzombie.com) for
-[CanvasLayers](https://bitbucket.org/ant512/canvaslayers/wiki/Home) which made
-all this canvas stuff much more palateable. Hexed Colony depends upon this
-MIT-licensed library, which can be found at Antony's BitBucket, or in this
-repository at src/gfx/CanvasLayers.js.
-
 Copying
 -------
 

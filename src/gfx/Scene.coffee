@@ -20,8 +20,7 @@ Terrain      = require('gfx/Terrain')
 Structures   = require('gfx/Structures')
 Entities     = require('gfx/Entities')
 Ui           = require('gfx/Ui')
-HexMath      = require('gfx/HexMath')
-HexDraw      = require('gfx/HexDraw')
+HexGrid      = require('gfx/HexGrid')
 Transforms   = require('gfx/Transforms')
 
 module.exports = class Scene
@@ -43,14 +42,13 @@ module.exports = class Scene
     @canvas = document.getElementById(@domId)
     @ctx    = @canvas.getContext('2d')
 
-    @hm  = new HexMath(@gridRadius)
     @tfm = new Transforms(this)
-    @hd  = new HexDraw(this)
+    @hg  = new HexGrid(this)
 
-    @terrain = new Terrain(this)
+    @terrain    = new Terrain(this)
     @structures = new Structures(this)
-    @entities = new Entities(this)
-    @ui = new Ui(this)
+    @entities   = new Entities(this)
+    @ui         = new Ui(this)
 
     @resize()
     window.addEventListener("resize", @resize)
@@ -58,9 +56,9 @@ module.exports = class Scene
   render: (dt) =>
     @dt = dt
 
-    g = @grid.getRect(@tfm.screenToHex([0         , 0          ]), # vertex
-                      @tfm.screenToHex([0 + @width, 0          ]), # maxQ
-                      @tfm.screenToHex([0         , 0 + @height])) # maxR
+    g = @grid.getRect(@hg.screenToHex([0         , 0          ]), # vertex
+                      @hg.screenToHex([0 + @width, 0          ]), # maxQ
+                      @hg.screenToHex([0         , 0 + @height])) # maxR
 
     @terrain.render(g)
     @structures.render(g)

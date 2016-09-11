@@ -20,10 +20,9 @@ module.exports = class Terrain
   constructor: (@scene) ->
 
     @grid = @scene.grid
-    @tfm  = @scene.tfm
-    @hm   = @scene.hm
     @ctx  = @scene.ctx
-    @hd   = @scene.hd
+    @tfm  = @scene.tfm
+    @hg   = @scene.hg
 
   drawBackground: () =>
     @ctx.save()
@@ -46,8 +45,8 @@ module.exports = class Terrain
 
       stroke = @scene.color.lineIn
 
-      @hd.fillstroke(space, fill, stroke)
+      @hg.fillstroke(space, fill, stroke)
 
-      @hd.debugSpace(space)
+      @hg.debugSpace(space)
 
     # TODO: Draw the Terrain Type for the space

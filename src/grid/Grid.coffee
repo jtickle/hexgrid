@@ -70,7 +70,6 @@ module.exports = class Grid
           yield s
       rowCount++
 
-
   toggleSelect: (pos) =>
     sp = @getSpace(pos)
     console.log sp
@@ -84,3 +83,4 @@ module.exports = class Grid
  
     @selected = sp
     @selected.selected = true
+    @selected

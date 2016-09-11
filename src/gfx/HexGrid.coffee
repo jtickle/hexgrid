@@ -16,19 +16,101 @@
 # through which recipients can access the Corresponding Source.
 # 
 
-module.exports = class HexDraw
+module.exports = class HexGrid
   constructor: (@scene) ->
-
-    @tfm = @scene.tfm
-    @hm  = @scene.hm
     @ctx = @scene.ctx
+    @tfm = @scene.tfm
+
+# Coordinate System Transforms
+
+  screenToHex: (screen) =>
+    @hexRound(@worldToHex(@tfm.screenToWorld(screen)))
+  
+  worldToHex: (pos) =>
+    [x,y] = pos
+    [x * 2/3 / @scene.gridRadius,
+     (-x / 3 + Math.sqrt(3)/3 * y) / @scene.gridRadius]
+
+  hexCenterToWorld: (hex) =>
+    [hq,hr] = hex
+    x = @scene.gridRadius * 3/2 * hq
+    y = @scene.gridRadius * Math.sqrt(3) * (hr + hq/2)
+    [x,y]
+  
+  hexCornerToWorld: (hex, corner) =>
+    [hq,hr] = hex
+    [cx,cy] = @hexCenterToWorld(hex)
+    theta = Math.PI / 180 * (60 * ((6 - corner) % 6))
+
+    [cx + @scene.gridRadius * Math.cos(theta),
+     cy + @scene.gridRadius * Math.sin(theta)]
+
+  hexToCube: (h) =>
+    x = h[0]
+    z = h[1]
+    y = -x-z
+    [x,y,z]
+
+  cubeToHex: (c) =>
+    [q,_,r] = c
+    [q,r]
+
+# Cube Math
+
+  lerp: (a, b, t) =>
+    a + (b - a) * t
+
+  cubeLerp: (a, b, t) =>
+    [aX,aY,aZ] = a
+    [bX,bY,bZ] = b
+    [@lerp(aX, bX, t),
+     @lerp(aY, bY, t),
+     @lerp(aZ, bZ, t)]
+
+  cubeDistance: (a, b) =>
+    [aX,aY,aZ] = a
+    [bX,bY,bZ] = b
+    (Math.abs(aX - bX) + Math.abs(aY - bY) + Math.abs(aZ - bZ)) / 2
+
+  cubeRound: (c) =>
+    [x,y,z] = c
+    rx = Math.round(x)
+    ry = Math.round(y)
+    rz = Math.round(z)
+
+    dx = Math.abs(rx - x)
+    dy = Math.abs(ry - y)
+    dz = Math.abs(rz - z)
+
+    if dx > dy and dx > dz
+      rx = -ry-rz
+    else if dy > dz
+      ry = -rx-rz
+    else
+      rz = -rx-ry
+
+    [rx, ry, rz]
+
+# Hex Math
+
+  hexRound: (h) =>
+    @cubeToHex(@cubeRound(@hexToCube(h)))
+
+  hexDistance: (a, b) =>
+    @cubeDistance(@hexToCube(a), @hexToCube(b))
+
+  createHexLine: (a, b) =>
+    n = @hexDistance(a, b)
+    (@cubeToHex(@cubeRound(@cubeLerp(@hexToCube(a), @hexToCube(b), (1.0/n) * i))) for i in [0..n])
+
+# Screen Drawing
 
   drawSides: (space, min, max) =>
-    [x,y] = @tfm.worldToScreen(@hm.hexCornerToWorld(space.pos, min - 1))
+    [x,y] = @tfm.worldToScreen(@hexCornerToWorld(space.pos, min - 1))
     @ctx.moveTo(x,y)
 
     for n in [min..max]
-      [x,y] = @tfm.worldToScreen(@hm.hexCornerToWorld(space.pos, n))
+      [x,y] = @tfm.worldToScreen(@hexCornerToWorld(space.pos, n))
       @ctx.lineTo(x,y)
 
   drawAllSides: (space) =>
@@ -68,7 +150,7 @@ module.exports = class HexDraw
     @ctx.save()
     pos = space.pos
 
-    [x,y] = @tfm.worldToScreen(@hm.hexCenterToWorld(pos))
+    [x,y] = @tfm.worldToScreen(@hexCenterToWorld(pos))
 
     @ctx.fillStyle = tcolor
     @ctx.textAlign = "center"

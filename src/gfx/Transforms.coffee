@@ -18,7 +18,6 @@
 
 module.exports = class Transforms
   constructor: (@scene) ->
-    @hm = @scene.hm
 
   screenToWorld: (pos) =>
     [x,y] = pos
@@ -31,6 +30,3 @@ module.exports = class Transforms
     [cx,cy] = @scene.center
     [(@scene.width / 2) + ((x - cx) / @scene.scale),
      (@scene.height / 2) + ((y - cy) / @scene.scale)]
-
-  screenToHex: (screen) =>
-    @hm.hexRound(@hm.worldToHex(@screenToWorld(screen)))
