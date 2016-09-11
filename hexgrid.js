@@ -8181,27 +8181,25 @@
 /* 298 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var ActionQueue, Grid, Input, Renderer, run;
+	var ActionQueue, Grid, Input, Scene, run;
 	
-	Renderer = __webpack_require__(299);
+	Grid = __webpack_require__(299);
 	
-	Grid = __webpack_require__(300);
+	ActionQueue = __webpack_require__(302);
 	
-	ActionQueue = __webpack_require__(303);
+	Input = __webpack_require__(303);
 	
-	Input = __webpack_require__(304);
+	Scene = __webpack_require__(304);
 	
 	run = function() {
-	  var animate, floor5, gq, grid, input, justShowStat, pt, renderer, rq, showStat, stats, time, timers;
-	  renderer = new Renderer('hexgrid', 50);
-	  rq = new ActionQueue(renderer);
-	  grid = new Grid(4);
-	  gq = new ActionQueue(grid);
-	  input = new Input(gq, rq);
+	  var animate, floor5, grid, input, justShowStat, pt, scene, showStat, sq, stats, time, timers;
+	  grid = new Grid(16);
+	  scene = new Scene('hexgrid', 50, grid);
+	  sq = new ActionQueue(scene);
+	  input = new Input(sq);
 	  pt = 0;
 	  window.addEventListener("resize", function() {
-	    rq.q('blank');
-	    return rq.q('drawGrid', grid);
+	    return sq.q('blank');
 	  });
 	  stats = {
 	    cursec: 0,
@@ -8209,7 +8207,6 @@
 	    dt: {
 	      f: 0,
 	      b: 0,
-	      g: 0,
 	      r: 0
 	    }
 	  };
@@ -8239,26 +8236,21 @@
 	    if (dt < 0) {
 	      return;
 	    }
-	    rq.q('blank');
-	    rq.q('drawGrid', grid);
 	    time.begin();
-	    gq.process();
-	    stats.dt.g += time.end();
-	    time.begin();
-	    rq.process();
+	    sq.process();
+	    scene.render();
 	    stats.dt.r += time.end();
+	    scene.render();
 	    stats.count++;
 	    sec = Math.floor(ct / 1000);
 	    if (sec !== stats.cursec) {
 	      justShowStat('fps', stats.count);
 	      showStat('dt_f', stats.dt.f, stats.count);
-	      showStat('dt_g', stats.dt.g, stats.count);
 	      showStat('dt_r', stats.dt.r, stats.count);
 	      showStat('dt_t', stats.dt.t, stats.count);
 	      stats.cursec = sec;
 	      stats.count = 0;
 	      stats.dt.f = 0;
-	      stats.dt.g = 0;
 	      stats.dt.r = 0;
 	      stats.dt.t = 0;
 	    }
@@ -8267,7 +8259,7 @@
 	    timers.length = 0;
 	    return requestAnimationFrame(animate);
 	  };
-	  input.activate(renderer.view);
+	  input.activate(scene.canvas);
 	  return animate(0);
 	};
 	
@@ -8278,337 +8270,12 @@
 
 /***/ },
 /* 299 */
-/***/ function(module, exports) {
-
-	var Renderer,
-	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-	
-	module.exports = Renderer = (function() {
-	  Renderer.prototype.center = [0, 0];
-	
-	  Renderer.prototype.scaleBase = 0;
-	
-	  Renderer.prototype.scale = 1;
-	
-	  Renderer.prototype.width = 0;
-	
-	  Renderer.prototype.height = 0;
-	
-	  Renderer.prototype.color = {
-	    bgOut: '#333',
-	    bgIn: '#CCC',
-	    lineOut: '#222',
-	    lineIn: '#333',
-	    lineSel: '#0C0',
-	    error: '#F00',
-	    text: '#333'
-	  };
-	
-	  function Renderer(domId, gridRadius) {
-	    this.domId = domId;
-	    this.gridRadius = gridRadius;
-	    this.zoom = bind(this.zoom, this);
-	    this.pan = bind(this.pan, this);
-	    this.drawGrid = bind(this.drawGrid, this);
-	    this.drawGridSpace = bind(this.drawGridSpace, this);
-	    this.textGridSpace = bind(this.textGridSpace, this);
-	    this.strokeGridSpace = bind(this.strokeGridSpace, this);
-	    this.fillGridSpace = bind(this.fillGridSpace, this);
-	    this.getHighestPrioritySpace = bind(this.getHighestPrioritySpace, this);
-	    this.calculateRenderPriority = bind(this.calculateRenderPriority, this);
-	    this.blank = bind(this.blank, this);
-	    this.createHexLine = bind(this.createHexLine, this);
-	    this.screenToHex = bind(this.screenToHex, this);
-	    this.hexCornerToWorld = bind(this.hexCornerToWorld, this);
-	    this.hexCenterToWorld = bind(this.hexCenterToWorld, this);
-	    this.hexDistance = bind(this.hexDistance, this);
-	    this.hexRound = bind(this.hexRound, this);
-	    this.cubeRound = bind(this.cubeRound, this);
-	    this.cubeDistance = bind(this.cubeDistance, this);
-	    this.cubeLerp = bind(this.cubeLerp, this);
-	    this.lerp = bind(this.lerp, this);
-	    this.cubeToHex = bind(this.cubeToHex, this);
-	    this.hexToCube = bind(this.hexToCube, this);
-	    this.worldToHex = bind(this.worldToHex, this);
-	    this.notifyResize = bind(this.notifyResize, this);
-	    this.worldToScreen = bind(this.worldToScreen, this);
-	    this.screenToWorld = bind(this.screenToWorld, this);
-	    this.setCenter = bind(this.setCenter, this);
-	    this.adjustScaleBase = bind(this.adjustScaleBase, this);
-	    this.setScaleBase = bind(this.setScaleBase, this);
-	    this.view = document.getElementById(this.domId);
-	    this.ctx = this.view.getContext('2d');
-	    this.notifyResize();
-	    window.addEventListener("resize", this.notifyResize);
-	  }
-	
-	  Renderer.prototype.setScaleBase = function(s) {
-	    this.scaleBase = s;
-	    this.scale = Math.pow(Math.E, this.scaleBase);
-	    return this;
-	  };
-	
-	  Renderer.prototype.adjustScaleBase = function(ds) {
-	    this.setScaleBase(this.scaleBase + ds);
-	    return this;
-	  };
-	
-	  Renderer.prototype.setCenter = function(pos) {
-	    return this.center = pos;
-	  };
-	
-	  Renderer.prototype.screenToWorld = function(pos) {
-	    var cx, cy, ref, x, y;
-	    x = pos[0], y = pos[1];
-	    ref = this.center, cx = ref[0], cy = ref[1];
-	    return [((x - (this.width / 2)) * this.scale) + cx, ((y - (this.height / 2)) * this.scale) + cy];
-	  };
-	
-	  Renderer.prototype.worldToScreen = function(pos) {
-	    var cx, cy, ref, x, y;
-	    x = pos[0], y = pos[1];
-	    ref = this.center, cx = ref[0], cy = ref[1];
-	    return [(this.width / 2) + ((x - cx) / this.scale), (this.height / 2) + ((y - cy) / this.scale)];
-	  };
-	
-	  Renderer.prototype.notifyResize = function() {
-	    this.width = document.documentElement.clientWidth;
-	    this.height = document.documentElement.clientHeight;
-	    this.view.width = this.width;
-	    this.view.height = this.height;
-	    return this;
-	  };
-	
-	  Renderer.prototype.worldToHex = function(pos) {
-	    var x, y;
-	    x = pos[0], y = pos[1];
-	    return [x * 2 / 3 / this.gridRadius, (-x / 3 + Math.sqrt(3) / 3 * y) / this.gridRadius];
-	  };
-	
-	  Renderer.prototype.hexToCube = function(h) {
-	    var x, y, z;
-	    x = h[0];
-	    z = h[1];
-	    y = -x - z;
-	    return [x, y, z];
-	  };
-	
-	  Renderer.prototype.cubeToHex = function(c) {
-	    var _, q, r;
-	    q = c[0], _ = c[1], r = c[2];
-	    return [q, r];
-	  };
-	
-	  Renderer.prototype.lerp = function(a, b, t) {
-	    return a + (b - a) * t;
-	  };
-	
-	  Renderer.prototype.cubeLerp = function(a, b, t) {
-	    var aX, aY, aZ, bX, bY, bZ;
-	    aX = a[0], aY = a[1], aZ = a[2];
-	    bX = b[0], bY = b[1], bZ = b[2];
-	    return [this.lerp(aX, bX, t), this.lerp(aY, bY, t), this.lerp(aZ, bZ, t)];
-	  };
-	
-	  Renderer.prototype.cubeDistance = function(a, b) {
-	    var aX, aY, aZ, bX, bY, bZ;
-	    aX = a[0], aY = a[1], aZ = a[2];
-	    bX = b[0], bY = b[1], bZ = b[2];
-	    return (Math.abs(aX - bX) + Math.abs(aY - bY) + Math.abs(aZ - bZ)) / 2;
-	  };
-	
-	  Renderer.prototype.cubeRound = function(c) {
-	    var dx, dy, dz, rx, ry, rz, x, y, z;
-	    x = c[0], y = c[1], z = c[2];
-	    rx = Math.round(x);
-	    ry = Math.round(y);
-	    rz = Math.round(z);
-	    dx = Math.abs(rx - x);
-	    dy = Math.abs(ry - y);
-	    dz = Math.abs(rz - z);
-	    if (dx > dy && dx > dz) {
-	      rx = -ry - rz;
-	    } else if (dy > dz) {
-	      ry = -rx - rz;
-	    } else {
-	      rz = -rx - ry;
-	    }
-	    return [rx, ry, rz];
-	  };
-	
-	  Renderer.prototype.hexRound = function(h) {
-	    return this.cubeToHex(this.cubeRound(this.hexToCube(h)));
-	  };
-	
-	  Renderer.prototype.hexDistance = function(a, b) {
-	    return this.cubeDistance(this.hexToCube(a), this.hexToCube(b));
-	  };
-	
-	  Renderer.prototype.hexCenterToWorld = function(hex) {
-	    var hq, hr, x, y;
-	    hq = hex[0], hr = hex[1];
-	    x = this.gridRadius * 3 / 2 * hq;
-	    y = this.gridRadius * Math.sqrt(3) * (hr + hq / 2);
-	    return [x, y];
-	  };
-	
-	  Renderer.prototype.hexCornerToWorld = function(hex, corner) {
-	    var cx, cy, hq, hr, ref, theta;
-	    hq = hex[0], hr = hex[1];
-	    ref = this.hexCenterToWorld(hex), cx = ref[0], cy = ref[1];
-	    theta = Math.PI / 180 * (60 * ((6 - corner) % 6));
-	    return [cx + this.gridRadius * Math.cos(theta), cy + this.gridRadius * Math.sin(theta)];
-	  };
-	
-	  Renderer.prototype.screenToHex = function(screen) {
-	    return this.hexRound(this.worldToHex(this.screenToWorld(screen)));
-	  };
-	
-	  Renderer.prototype.createHexLine = function(a, b) {
-	    var i, j, n, ref, results;
-	    n = this.hexDistance(a, b);
-	    results = [];
-	    for (i = j = 0, ref = n; 0 <= ref ? j <= ref : j >= ref; i = 0 <= ref ? ++j : --j) {
-	      results.push(this.cubeToHex(this.cubeRound(this.cubeLerp(this.hexToCube(a), this.hexToCube(b), (1.0 / n) * i))));
-	    }
-	    return results;
-	  };
-	
-	  Renderer.prototype.blank = function() {};
-	
-	  Renderer.prototype.calculateRenderPriority = function(space) {
-	    var val;
-	    val = 0;
-	    if (!space.selected) {
-	      val += 5;
-	    }
-	    switch (this.type) {
-	      case "Empty":
-	        val += 10;
-	    }
-	    return val;
-	  };
-	
-	  Renderer.prototype.getHighestPrioritySpace = function(edge) {
-	    if (edge.neighbors[1] == null) {
-	      return edge.neighbors[0];
-	    } else {
-	      if (this.calculateRenderPriority(edge.neighbors[0]) <= this.calculateRenderPriority(edge.neighbors[1])) {
-	        return edge.neighbors[0];
-	      } else {
-	        return edge.neighbors[1];
-	      }
-	    }
-	  };
-	
-	  Renderer.prototype.fillGridSpace = function(pos, space) {
-	    var j, n, ref, ref1, x, y;
-	    if (space === null) {
-	      space = {
-	        type: 'OutOfBounds'
-	      };
-	    }
-	    this.ctx.save();
-	    this.ctx.beginPath();
-	    ref = this.worldToScreen(this.hexCornerToWorld(pos, 5)), x = ref[0], y = ref[1];
-	    this.ctx.moveTo(x, y);
-	    for (n = j = 0; j <= 5; n = ++j) {
-	      ref1 = this.worldToScreen(this.hexCornerToWorld(pos, n)), x = ref1[0], y = ref1[1];
-	      this.ctx.lineTo(x, y);
-	    }
-	    this.ctx.fillStyle = (function() {
-	      switch (space.type) {
-	        case "OutOfBounds":
-	          return this.color.bgOut;
-	        case "Empty":
-	          return this.color.bgIn;
-	        default:
-	          return this.color.error;
-	      }
-	    }).call(this);
-	    this.ctx.fill();
-	    return this.ctx.restore();
-	  };
-	
-	  Renderer.prototype.strokeGridSpace = function(pos, space) {
-	    var hipri, j, n, ref, ref1, x0, x1, y0, y1;
-	    this.ctx.save();
-	    for (n = j = 0; j <= 2; n = ++j) {
-	      ref = this.worldToScreen(this.hexCornerToWorld(pos, n - 1)), x0 = ref[0], y0 = ref[1];
-	      ref1 = this.worldToScreen(this.hexCornerToWorld(pos, n)), x1 = ref1[0], y1 = ref1[1];
-	      hipri = (space != null) && (space.edges[n] != null) ? this.getHighestPrioritySpace(space.edges[n]) : null;
-	      this.ctx.beginPath();
-	      this.ctx.strokeStyle = (hipri != null) && hipri.selected ? this.color.lineSel : hipri != null ? this.color.lineIn : this.color.lineOut;
-	      this.ctx.moveTo(x0, y0);
-	      this.ctx.lineTo(x1, y1);
-	      this.ctx.closePath();
-	      this.ctx.stroke();
-	    }
-	    return this.ctx.restore();
-	  };
-	
-	  Renderer.prototype.textGridSpace = function(pos, space) {
-	    var ref, x, y;
-	    this.ctx.save();
-	    ref = this.worldToScreen(this.hexCenterToWorld(pos)), x = ref[0], y = ref[1];
-	    this.ctx.fillStyle = this.color.text;
-	    this.ctx.textAlign = "center";
-	    this.ctx.font = "" + Math.floor(14 / this.scale) + "px sans-serif";
-	    this.ctx.fillText(space.type, x, y);
-	    this.ctx.font = "" + Math.floor(12 / this.scale) + "px sans-serif";
-	    this.ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(30 / this.scale));
-	    return this.ctx.restore();
-	  };
-	
-	  Renderer.prototype.drawGridSpace = function(pos, space) {
-	    this.fillGridSpace(pos, space);
-	    this.strokeGridSpace(pos, space);
-	    if ((space != null)) {
-	      return this.textGridSpace(pos, space);
-	    }
-	  };
-	
-	  Renderer.prototype.drawGrid = function(grid) {
-	    var j, len, ref, results, space;
-	    ref = grid.getRect(this.screenToHex([0, 0]), this.screenToHex([this.width, this.height]));
-	    results = [];
-	    for (j = 0, len = ref.length; j < len; j++) {
-	      space = ref[j];
-	      console.log(space);
-	      results.push(this.drawGridSpace(space.pos, space));
-	    }
-	    return results;
-	  };
-	
-	  Renderer.prototype.pan = function(dx, dy) {
-	    var ref, x, y;
-	    ref = this.center, x = ref[0], y = ref[1];
-	    return this.setCenter([x - dx * this.scale, y - dy * this.scale]);
-	  };
-	
-	  Renderer.prototype.zoom = function(pos, factor) {
-	    var cx, cy, dx, dy, ref, ref1, x, y;
-	    ref = this.screenToWorld(pos), x = ref[0], y = ref[1];
-	    ref1 = this.center, cx = ref1[0], cy = ref1[1];
-	    dx = (x - cx) / this.scale;
-	    dy = (y - cy) / this.scale;
-	    this.adjustScaleBase(factor);
-	    return this.setCenter([x - (dx * this.scale), y - (dy * this.scale)]);
-	  };
-	
-	  return Renderer;
-
-	})();
-
-
-/***/ },
-/* 300 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Grid, Space, mkCol, mkRow,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
-	Space = __webpack_require__(301);
+	Space = __webpack_require__(300);
 	
 	mkCol = function(grid, pos) {
 	  return new Space(pos, 'Empty', grid);
@@ -8666,35 +8333,50 @@
 	    }
 	  };
 	
-	  Grid.prototype.getRect = function*(arg, arg1) {
-	    var k, q, qq, qr, r, rectCt, ref, ref1, results, rq, rr;
-	    qq = arg[0], qr = arg[1];
-	    rq = arg1[0], rr = arg1[1];
-	    console.log('derp');
-	    console.log(qq, qr, rq, rr);
-	    rectCt = 0;
-	    results = [];
-	    for (r = k = ref = qr, ref1 = qr + (rr - cr); ref <= ref1 ? k <= ref1 : k >= ref1; r = ref <= ref1 ? ++k : --k) {
-	      results.push((yield* (function*() {
-	        var l, ref2, ref3, results1;
-	        results1 = [];
-	        for (q = l = ref2 = Math.min(qq - 1 - (2 * rectCt), rq), ref3 = Math.min(rq + 1 + (2 * realCt), qq); ref2 <= ref3 ? l <= ref3 : l >= ref3; q = ref2 <= ref3 ? ++l : --l) {
-	          results1.push((yield getSpace([q, r])));
+	  Grid.prototype.getRect = function*(arg, arg1, arg2) {
+	    var dq, k, l, len, len1, m, n, q, q0, q1, qq, qr, qs, r, results, results1, results2, rowCount, rq, rr, rs, s, vq, vr;
+	    vq = arg[0], vr = arg[1];
+	    qq = arg1[0], qr = arg1[1];
+	    rq = arg2[0], rr = arg2[1];
+	    rowCount = 0;
+	    rs = (function() {
+	      results = [];
+	      for (var k = qr; qr <= rr ? k <= rr : k >= rr; qr <= rr ? k++ : k--){ results.push(k); }
+	      return results;
+	    }).apply(this);
+	    dq = qq - vq;
+	    results1 = [];
+	    for (l = 0, len = rs.length; l < len; l++) {
+	      r = rs[l];
+	      q0 = Math.max(qq - 2 - (2 * rowCount), vq - 1);
+	      q1 = Math.min(q0 + dq + 2, qq + 1);
+	      qs = (function() {
+	        results2 = [];
+	        for (var m = q0; q0 <= q1 ? m <= q1 : m >= q1; q0 <= q1 ? m++ : m--){ results2.push(m); }
+	        return results2;
+	      }).apply(this);
+	      for (n = 0, len1 = qs.length; n < len1; n++) {
+	        q = qs[n];
+	        s = this.getSpace([q, r]);
+	        if (s == null) {
+	          continue;
+	        } else {
+	          (yield s);
 	        }
-	        return results1;
-	      })()));
+	      }
+	      results1.push(rowCount++);
 	    }
-	    return results;
+	    return results1;
 	  };
 	
 	  Grid.prototype.toggleSelect = function(pos) {
 	    var sp;
 	    sp = this.getSpace(pos);
 	    console.log(sp);
-	    if ((this.selected != null)) {
+	    if (this.selected != null) {
 	      this.selected.selected = false;
 	    }
-	    if (this.selected === sp) {
+	    if (this.selected === sp || (sp == null)) {
 	      this.selected = null;
 	      return;
 	    }
@@ -8708,13 +8390,13 @@
 
 
 /***/ },
-/* 301 */
+/* 300 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Edge, Space,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
-	Edge = __webpack_require__(302);
+	Edge = __webpack_require__(301);
 	
 	module.exports = Space = (function() {
 	  function Space(pos, type) {
@@ -8769,7 +8451,7 @@
 
 
 /***/ },
-/* 302 */
+/* 301 */
 /***/ function(module, exports) {
 
 	var Edge,
@@ -8813,7 +8495,7 @@
 
 
 /***/ },
-/* 303 */
+/* 302 */
 /***/ function(module, exports) {
 
 	var ActionQueue,
@@ -8851,16 +8533,15 @@
 
 
 /***/ },
-/* 304 */
+/* 303 */
 /***/ function(module, exports) {
 
 	var Input,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	module.exports = Input = (function() {
-	  function Input(gq, rq) {
-	    this.gq = gq;
-	    this.rq = rq;
+	  function Input(sq) {
+	    this.sq = sq;
 	    this.deactivate = bind(this.deactivate, this);
 	    this.activate = bind(this.activate, this);
 	    this.doListeners = bind(this.doListeners, this);
@@ -8908,11 +8589,11 @@
 	  };
 	
 	  Input.prototype.mouseMoveViewport = function(e, m) {
-	    return this.rq.q('pan', e.clientX - m.x, e.clientY - m.y);
+	    return this.sq.q('pan', e.clientX - m.x, e.clientY - m.y);
 	  };
 	
 	  Input.prototype.moveOnNotClick = function() {
-	    this.rq.q('pan', this.mouse.x - this.mouse.saveX, this.mouse.y - this.mouse.saveY);
+	    this.sq.q('pan', this.mouse.x - this.mouse.saveX, this.mouse.y - this.mouse.saveY);
 	    delete this.mouse.clickTimer;
 	    delete this.mouse.saveX;
 	    return delete this.mouse.saveY;
@@ -8929,15 +8610,13 @@
 	  };
 	
 	  Input.prototype.onMouseUp = function(e) {
-	    var pos;
 	    if (this.mouse.l) {
 	      if (this.mouse.clickTimer) {
 	        clearTimeout(this.mouse.clickTimer);
 	        delete this.mouse.clickTimer;
 	        delete this.mouse.saveX;
 	        delete this.mouse.saveY;
-	        pos = this.rq.target.screenToHex(this.getPos(e));
-	        this.gq.q('toggleSelect', pos);
+	        this.sq.q('click', this.getPos(e));
 	      } else {
 	        this.mouseMoveViewport(e, this.mouse);
 	      }
@@ -8970,7 +8649,7 @@
 	    this.mouse.wm = e.deltaMode;
 	    this.updateMouseData(e);
 	    pos = this.getPos(e);
-	    this.rq.q('zoom', pos, e.deltaY / 1000);
+	    this.sq.q('zoom', pos, e.deltaY / 1000);
 	    return void 0;
 	  };
 	
@@ -8991,6 +8670,508 @@
 	  };
 	
 	  return Input;
+
+	})();
+
+
+/***/ },
+/* 304 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var Entities, HexDraw, HexMath, Scene, Structures, Terrain, Transforms, Ui,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	Terrain = __webpack_require__(305);
+	
+	Structures = __webpack_require__(306);
+	
+	Entities = __webpack_require__(307);
+	
+	Ui = __webpack_require__(308);
+	
+	HexMath = __webpack_require__(309);
+	
+	HexDraw = __webpack_require__(310);
+	
+	Transforms = __webpack_require__(311);
+	
+	module.exports = Scene = (function() {
+	  Scene.prototype.center = [0, 0];
+	
+	  Scene.prototype.scaleBase = 0;
+	
+	  Scene.prototype.scale = 1;
+	
+	  Scene.prototype.width = 0;
+	
+	  Scene.prototype.height = 0;
+	
+	  Scene.prototype.color = {
+	    bgOut: '#333',
+	    bgIn: '#CCC',
+	    lineOut: '#222',
+	    lineIn: '#333',
+	    lineSel: '#0C0',
+	    error: '#F00',
+	    text: '#333'
+	  };
+	
+	  function Scene(domId, gridRadius, grid) {
+	    this.domId = domId;
+	    this.gridRadius = gridRadius;
+	    this.grid = grid;
+	    this.resize = bind(this.resize, this);
+	    this.click = bind(this.click, this);
+	    this.zoom = bind(this.zoom, this);
+	    this.pan = bind(this.pan, this);
+	    this.adjustScaleBase = bind(this.adjustScaleBase, this);
+	    this.setScaleBase = bind(this.setScaleBase, this);
+	    this.setCenter = bind(this.setCenter, this);
+	    this.render = bind(this.render, this);
+	    this.canvas = document.getElementById(this.domId);
+	    this.ctx = this.canvas.getContext('2d');
+	    this.hm = new HexMath(this.gridRadius);
+	    this.tfm = new Transforms(this);
+	    this.hd = new HexDraw(this);
+	    this.terrain = new Terrain(this);
+	    this.structures = new Structures(this);
+	    this.entities = new Entities(this);
+	    this.ui = new Ui(this);
+	    this.resize();
+	    window.addEventListener("resize", this.resize);
+	  }
+	
+	  Scene.prototype.render = function(dt) {
+	    var g;
+	    this.dt = dt;
+	    g = this.grid.getRect(this.tfm.screenToHex([0, 0]), this.tfm.screenToHex([0 + this.width, 0]), this.tfm.screenToHex([0, 0 + this.height]));
+	    this.terrain.render(g);
+	    this.structures.render(g);
+	    this.entities.render(g);
+	    return this.ui.render(g);
+	  };
+	
+	  Scene.prototype.setCenter = function(pos) {
+	    return this.center = pos;
+	  };
+	
+	  Scene.prototype.setScaleBase = function(s) {
+	    this.scaleBase = s;
+	    this.scale = Math.pow(Math.E, this.scaleBase);
+	    return this;
+	  };
+	
+	  Scene.prototype.adjustScaleBase = function(ds) {
+	    this.setScaleBase(this.scaleBase + ds);
+	    return this;
+	  };
+	
+	  Scene.prototype.pan = function(dx, dy) {
+	    var ref, x, y;
+	    ref = this.center, x = ref[0], y = ref[1];
+	    return this.setCenter([x - dx * this.scale, y - dy * this.scale]);
+	  };
+	
+	  Scene.prototype.zoom = function(pos, ds) {
+	    var cx, cy, dx, dy, ref, ref1, x, y;
+	    ref = this.tfm.screenToWorld(pos), x = ref[0], y = ref[1];
+	    ref1 = this.center, cx = ref1[0], cy = ref1[1];
+	    dx = (x - cx) / this.scale;
+	    dy = (y - cy) / this.scale;
+	    this.adjustScaleBase(ds);
+	    return this.setCenter([x - (dx * this.scale), y - (dy * this.scale)]);
+	  };
+	
+	  Scene.prototype.click = function(pos) {
+	    pos = this.tfm.screenToHex(pos);
+	    return this.grid.toggleSelect(pos);
+	  };
+	
+	  Scene.prototype.resize = function() {
+	    this.width = document.documentElement.clientWidth;
+	    this.height = document.documentElement.clientHeight;
+	    this.canvas.width = this.width;
+	    this.canvas.height = this.height;
+	    return void 0;
+	  };
+	
+	  return Scene;
+
+	})();
+
+
+/***/ },
+/* 305 */
+/***/ function(module, exports) {
+
+	var Terrain,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = Terrain = (function() {
+	  function Terrain(scene) {
+	    this.scene = scene;
+	    this.render = bind(this.render, this);
+	    this.drawBackground = bind(this.drawBackground, this);
+	    this.grid = this.scene.grid;
+	    this.tfm = this.scene.tfm;
+	    this.hm = this.scene.hm;
+	    this.ctx = this.scene.ctx;
+	    this.hd = this.scene.hd;
+	  }
+	
+	  Terrain.prototype.drawBackground = function() {
+	    this.ctx.save();
+	    this.ctx.fillStyle = this.scene.color.bgOut;
+	    this.ctx.fillRect(0, 0, this.scene.width, this.scene.height);
+	    return this.ctx.restore();
+	  };
+	
+	  Terrain.prototype.render = function(spaces) {
+	    var fill, i, results, space, stroke;
+	    this.drawBackground();
+	    results = [];
+	    while (!(i = spaces.next()).done) {
+	      space = i.value;
+	      fill = (function() {
+	        switch (space.type) {
+	          case "Empty":
+	            return this.scene.color.bgIn;
+	          default:
+	            return this.scene.color.error;
+	        }
+	      }).call(this);
+	      stroke = this.scene.color.lineIn;
+	      this.hd.fillstroke(space, fill, stroke);
+	      results.push(this.hd.debugSpace(space));
+	    }
+	    return results;
+	  };
+	
+	  return Terrain;
+
+	})();
+
+
+/***/ },
+/* 306 */
+/***/ function(module, exports) {
+
+	var Structures,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = Structures = (function() {
+	  function Structures(scene) {
+	    this.scene = scene;
+	    this.render = bind(this.render, this);
+	    this.ctx = this.scene.ctx;
+	    this.grid = this.scene.grid;
+	    this.tfm = this.scene.tfm;
+	  }
+	
+	  Structures.prototype.render = function(spaces) {};
+	
+	  return Structures;
+
+	})();
+
+
+/***/ },
+/* 307 */
+/***/ function(module, exports) {
+
+	var Entities,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = Entities = (function() {
+	  function Entities(scene) {
+	    this.scene = scene;
+	    this.render = bind(this.render, this);
+	    this.ctx = this.scene.ctx;
+	    this.tfm = this.scene.tfm;
+	    this.grid = this.scene.grid;
+	  }
+	
+	  Entities.prototype.render = function(spaces) {};
+	
+	  return Entities;
+
+	})();
+
+
+/***/ },
+/* 308 */
+/***/ function(module, exports) {
+
+	var Ui,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = Ui = (function() {
+	  function Ui(scene) {
+	    this.scene = scene;
+	    this.render = bind(this.render, this);
+	    this.ctx = this.scene.ctx;
+	    this.grid = this.scene.grid;
+	    this.tfm = this.scene.tfm;
+	  }
+	
+	  Ui.prototype.render = function(spaces) {};
+	
+	  return Ui;
+
+	})();
+
+
+/***/ },
+/* 309 */
+/***/ function(module, exports) {
+
+	var HexMath,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = HexMath = (function() {
+	  function HexMath(gridRadius) {
+	    this.gridRadius = gridRadius;
+	    this.createHexLine = bind(this.createHexLine, this);
+	    this.hexCornerToWorld = bind(this.hexCornerToWorld, this);
+	    this.hexCenterToWorld = bind(this.hexCenterToWorld, this);
+	    this.hexDistance = bind(this.hexDistance, this);
+	    this.hexRound = bind(this.hexRound, this);
+	    this.cubeRound = bind(this.cubeRound, this);
+	    this.cubeDistance = bind(this.cubeDistance, this);
+	    this.cubeLerp = bind(this.cubeLerp, this);
+	    this.lerp = bind(this.lerp, this);
+	    this.cubeToHex = bind(this.cubeToHex, this);
+	    this.hexToCube = bind(this.hexToCube, this);
+	    this.worldToHex = bind(this.worldToHex, this);
+	  }
+	
+	  HexMath.prototype.worldToHex = function(pos) {
+	    var x, y;
+	    x = pos[0], y = pos[1];
+	    return [x * 2 / 3 / this.gridRadius, (-x / 3 + Math.sqrt(3) / 3 * y) / this.gridRadius];
+	  };
+	
+	  HexMath.prototype.hexToCube = function(h) {
+	    var x, y, z;
+	    x = h[0];
+	    z = h[1];
+	    y = -x - z;
+	    return [x, y, z];
+	  };
+	
+	  HexMath.prototype.cubeToHex = function(c) {
+	    var _, q, r;
+	    q = c[0], _ = c[1], r = c[2];
+	    return [q, r];
+	  };
+	
+	  HexMath.prototype.lerp = function(a, b, t) {
+	    return a + (b - a) * t;
+	  };
+	
+	  HexMath.prototype.cubeLerp = function(a, b, t) {
+	    var aX, aY, aZ, bX, bY, bZ;
+	    aX = a[0], aY = a[1], aZ = a[2];
+	    bX = b[0], bY = b[1], bZ = b[2];
+	    return [this.lerp(aX, bX, t), this.lerp(aY, bY, t), this.lerp(aZ, bZ, t)];
+	  };
+	
+	  HexMath.prototype.cubeDistance = function(a, b) {
+	    var aX, aY, aZ, bX, bY, bZ;
+	    aX = a[0], aY = a[1], aZ = a[2];
+	    bX = b[0], bY = b[1], bZ = b[2];
+	    return (Math.abs(aX - bX) + Math.abs(aY - bY) + Math.abs(aZ - bZ)) / 2;
+	  };
+	
+	  HexMath.prototype.cubeRound = function(c) {
+	    var dx, dy, dz, rx, ry, rz, x, y, z;
+	    x = c[0], y = c[1], z = c[2];
+	    rx = Math.round(x);
+	    ry = Math.round(y);
+	    rz = Math.round(z);
+	    dx = Math.abs(rx - x);
+	    dy = Math.abs(ry - y);
+	    dz = Math.abs(rz - z);
+	    if (dx > dy && dx > dz) {
+	      rx = -ry - rz;
+	    } else if (dy > dz) {
+	      ry = -rx - rz;
+	    } else {
+	      rz = -rx - ry;
+	    }
+	    return [rx, ry, rz];
+	  };
+	
+	  HexMath.prototype.hexRound = function(h) {
+	    return this.cubeToHex(this.cubeRound(this.hexToCube(h)));
+	  };
+	
+	  HexMath.prototype.hexDistance = function(a, b) {
+	    return this.cubeDistance(this.hexToCube(a), this.hexToCube(b));
+	  };
+	
+	  HexMath.prototype.hexCenterToWorld = function(hex) {
+	    var hq, hr, x, y;
+	    hq = hex[0], hr = hex[1];
+	    x = this.gridRadius * 3 / 2 * hq;
+	    y = this.gridRadius * Math.sqrt(3) * (hr + hq / 2);
+	    return [x, y];
+	  };
+	
+	  HexMath.prototype.hexCornerToWorld = function(hex, corner) {
+	    var cx, cy, hq, hr, ref, theta;
+	    hq = hex[0], hr = hex[1];
+	    ref = this.hexCenterToWorld(hex), cx = ref[0], cy = ref[1];
+	    theta = Math.PI / 180 * (60 * ((6 - corner) % 6));
+	    return [cx + this.gridRadius * Math.cos(theta), cy + this.gridRadius * Math.sin(theta)];
+	  };
+	
+	  HexMath.prototype.createHexLine = function(a, b) {
+	    var i, j, n, ref, results;
+	    n = this.hexDistance(a, b);
+	    results = [];
+	    for (i = j = 0, ref = n; 0 <= ref ? j <= ref : j >= ref; i = 0 <= ref ? ++j : --j) {
+	      results.push(this.cubeToHex(this.cubeRound(this.cubeLerp(this.hexToCube(a), this.hexToCube(b), (1.0 / n) * i))));
+	    }
+	    return results;
+	  };
+	
+	  return HexMath;
+
+	})();
+
+
+/***/ },
+/* 310 */
+/***/ function(module, exports) {
+
+	var HexDraw,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = HexDraw = (function() {
+	  function HexDraw(scene) {
+	    this.scene = scene;
+	    this.debugSpace = bind(this.debugSpace, this);
+	    this.fillstroke = bind(this.fillstroke, this);
+	    this.stroke = bind(this.stroke, this);
+	    this.fill = bind(this.fill, this);
+	    this.ctxEnd = bind(this.ctxEnd, this);
+	    this.ctxStart = bind(this.ctxStart, this);
+	    this.drawAllSides = bind(this.drawAllSides, this);
+	    this.drawSides = bind(this.drawSides, this);
+	    this.tfm = this.scene.tfm;
+	    this.hm = this.scene.hm;
+	    this.ctx = this.scene.ctx;
+	  }
+	
+	  HexDraw.prototype.drawSides = function(space, min, max) {
+	    var i, n, ref, ref1, ref2, ref3, results, x, y;
+	    ref = this.tfm.worldToScreen(this.hm.hexCornerToWorld(space.pos, min - 1)), x = ref[0], y = ref[1];
+	    this.ctx.moveTo(x, y);
+	    results = [];
+	    for (n = i = ref1 = min, ref2 = max; ref1 <= ref2 ? i <= ref2 : i >= ref2; n = ref1 <= ref2 ? ++i : --i) {
+	      ref3 = this.tfm.worldToScreen(this.hm.hexCornerToWorld(space.pos, n)), x = ref3[0], y = ref3[1];
+	      results.push(this.ctx.lineTo(x, y));
+	    }
+	    return results;
+	  };
+	
+	  HexDraw.prototype.drawAllSides = function(space) {
+	    return this.drawSides(space, 0, 5);
+	  };
+	
+	  HexDraw.prototype.ctxStart = function(space) {
+	    this.ctx.save();
+	    this.ctx.beginPath();
+	    return this.drawAllSides(space);
+	  };
+	
+	  HexDraw.prototype.ctxEnd = function() {
+	    this.ctx.closePath();
+	    return this.ctx.restore();
+	  };
+	
+	  HexDraw.prototype.fill = function(space, color) {
+	    this.ctxStart(space);
+	    this.ctx.fillStyle = color;
+	    this.ctx.fill();
+	    return this.ctxEnd();
+	  };
+	
+	  HexDraw.prototype.stroke = function(space, color) {
+	    this.ctxStart(space);
+	    this.ctx.strokeStyle = color;
+	    this.ctx.lineWidth = 2;
+	    this.ctx.stroke();
+	    return this.ctxEnd();
+	  };
+	
+	  HexDraw.prototype.fillstroke = function(space, fcolor, scolor) {
+	    this.ctxStart(space);
+	    this.ctx.strokeStyle = scolor;
+	    this.ctx.fillStyle = fcolor;
+	    this.ctx.fill();
+	    this.ctx.stroke();
+	    return this.ctxEnd();
+	  };
+	
+	  HexDraw.prototype.debugSpace = function(space, tcolor) {
+	    var pos, ref, x, y;
+	    if (tcolor == null) {
+	      tcolor = '#000';
+	    }
+	    this.ctx.save();
+	    pos = space.pos;
+	    ref = this.tfm.worldToScreen(this.hm.hexCenterToWorld(pos)), x = ref[0], y = ref[1];
+	    this.ctx.fillStyle = tcolor;
+	    this.ctx.textAlign = "center";
+	    this.ctx.font = "" + Math.floor(14 / this.scene.scale) + "px sans-serif";
+	    this.ctx.fillText(space.type, x, y);
+	    this.ctx.font = "" + Math.floor(12 / this.scene.scale) + "px sans-serif";
+	    this.ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(30 / this.scene.scale));
+	    return this.ctx.restore();
+	  };
+	
+	  return HexDraw;
+
+	})();
+
+
+/***/ },
+/* 311 */
+/***/ function(module, exports) {
+
+	var Transforms,
+	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	
+	module.exports = Transforms = (function() {
+	  function Transforms(scene) {
+	    this.scene = scene;
+	    this.screenToHex = bind(this.screenToHex, this);
+	    this.worldToScreen = bind(this.worldToScreen, this);
+	    this.screenToWorld = bind(this.screenToWorld, this);
+	    this.hm = this.scene.hm;
+	  }
+	
+	  Transforms.prototype.screenToWorld = function(pos) {
+	    var cx, cy, ref, x, y;
+	    x = pos[0], y = pos[1];
+	    ref = this.scene.center, cx = ref[0], cy = ref[1];
+	    return [((x - (this.scene.width / 2)) * this.scene.scale) + cx, ((y - (this.scene.height / 2)) * this.scene.scale) + cy];
+	  };
+	
+	  Transforms.prototype.worldToScreen = function(pos) {
+	    var cx, cy, ref, x, y;
+	    x = pos[0], y = pos[1];
+	    ref = this.scene.center, cx = ref[0], cy = ref[1];
+	    return [(this.scene.width / 2) + ((x - cx) / this.scene.scale), (this.scene.height / 2) + ((y - cy) / this.scene.scale)];
+	  };
+	
+	  Transforms.prototype.screenToHex = function(screen) {
+	    return this.hm.hexRound(this.hm.worldToHex(this.screenToWorld(screen)));
+	  };
+	
+	  return Transforms;
 
 	})();
 
