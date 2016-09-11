@@ -22,7 +22,7 @@ Input       = require 'Input'
 Scene       = require 'gfx/Scene'
 
 run = () ->
-  grid     = new Grid(4)
+  grid     = new Grid(16)
   scene    = new Scene('hexgrid', 50, grid)
   sq       = new ActionQueue(scene)
   input    = new Input(sq)

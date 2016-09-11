@@ -52,17 +52,23 @@ module.exports = class Grid
 
   getRect: ([vq,vr], [qq,qr], [rq,rr]) =>
 
-    rectCt = 0
+    rowCount = 0
 
-    console.log(qr, qr + (rr - qr))
-    for r in [qr .. qr + (rr - qr)]
-      for q in [Math.min(qq - 1 - (2 * rectCt), rq) .. Math.min(rq + 1 + (2*rectCt),qq)]
+    rs = [qr .. rr]
+
+    dq = qq - vq
+
+    for r in rs
+      q0 = Math.max(qq - 2 - (2 * rowCount), vq - 1)
+      q1 = Math.min(q0 + dq + 2, qq + 1)
+      qs = [q0 .. q1]
+      for q in qs
         s = @getSpace([q,r])
         if(!s?)
           continue
         else
           yield s
-      rectCt++
+      rowCount++
 
 
   toggleSelect: (pos) =>
