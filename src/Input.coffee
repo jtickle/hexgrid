@@ -75,9 +75,7 @@ module.exports = class Input
     if !cnt
       @touch.average = null
     else
-      @touch.average =
-        x: avgX / cnt
-        y: avgY / cnt
+      @touch.average = [avgX / cnt, avgY / cnt]
 
     # If two touches, set Pinch Data
     if e.touches.length == 2
@@ -155,20 +153,20 @@ module.exports = class Input
     undefined
 
   onTouchStart: (e) =>
-    updateTouchData e
+    @updateTouchData e
     undefined
 
   onTouchMove: (e) =>
     pp = @touch.pinch
     pa = @touch.average
-    updateTouchData e
+    @updateTouchData e
     np = @touch.pinch
     na = @touch.average
 
     if e.touches.length > 0
       if e.touches.length == 2
-        rq.q('zoom', (np.r - pp.r) / -100)
-      rq.q('pan', na.x - pa.x, na.y - pa.y)
+        @sq.q('zoom', pa, (np.r - pp.r) / -100)
+      @sq.q('pan', na[0] - pa[0], na[1] - pa[1])
     undefined
 
   doListeners: (fn) =>

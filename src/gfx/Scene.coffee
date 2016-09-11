@@ -85,10 +85,13 @@ module.exports = class Scene
                 y - dy * @scale])
 
   zoom: (pos, ds) =>
+    console.log('zoom', pos, ds)
     [x,y] = @tfm.screenToWorld(pos)
     [cx,cy] = @center
+    console.log(x, y, cx, cy, @scale)
     dx = (x - cx) / @scale
     dy = (y - cy) / @scale
+    console.log(dx, dy)
     @adjustScaleBase(ds)
     @setCenter([x - (dx * @scale),
                 y - (dy * @scale)])
@@ -96,6 +99,7 @@ module.exports = class Scene
   click: (pos) =>
     pos = @tfm.screenToHex(pos)
     @grid.toggleSelect(pos)
+    undefined
 
   resize: () =>
     @width = document.documentElement.clientWidth

@@ -8615,10 +8615,7 @@
 	    if (!cnt) {
 	      this.touch.average = null;
 	    } else {
-	      this.touch.average = {
-	        x: avgX / cnt,
-	        y: avgY / cnt
-	      };
+	      this.touch.average = [avgX / cnt, avgY / cnt];
 	    }
 	    if (e.touches.length === 2) {
 	      pinch = {};
@@ -8706,7 +8703,7 @@
 	  };
 	
 	  Input.prototype.onTouchStart = function(e) {
-	    updateTouchData(e);
+	    this.updateTouchData(e);
 	    return void 0;
 	  };
 	
@@ -8714,14 +8711,14 @@
 	    var na, np, pa, pp;
 	    pp = this.touch.pinch;
 	    pa = this.touch.average;
-	    updateTouchData(e);
+	    this.updateTouchData(e);
 	    np = this.touch.pinch;
 	    na = this.touch.average;
 	    if (e.touches.length > 0) {
 	      if (e.touches.length === 2) {
-	        rq.q('zoom', (np.r - pp.r) / -100);
+	        this.sq.q('zoom', pa, (np.r - pp.r) / -100);
 	      }
-	      rq.q('pan', na.x - pa.x, na.y - pa.y);
+	      this.sq.q('pan', na[0] - pa[0], na[1] - pa[1]);
 	    }
 	    return void 0;
 	  };
@@ -8851,17 +8848,21 @@
 	
 	  Scene.prototype.zoom = function(pos, ds) {
 	    var cx, cy, dx, dy, ref, ref1, x, y;
+	    console.log('zoom', pos, ds);
 	    ref = this.tfm.screenToWorld(pos), x = ref[0], y = ref[1];
 	    ref1 = this.center, cx = ref1[0], cy = ref1[1];
+	    console.log(x, y, cx, cy, this.scale);
 	    dx = (x - cx) / this.scale;
 	    dy = (y - cy) / this.scale;
+	    console.log(dx, dy);
 	    this.adjustScaleBase(ds);
 	    return this.setCenter([x - (dx * this.scale), y - (dy * this.scale)]);
 	  };
 	
 	  Scene.prototype.click = function(pos) {
 	    pos = this.tfm.screenToHex(pos);
-	    return this.grid.toggleSelect(pos);
+	    this.grid.toggleSelect(pos);
+	    return void 0;
 	  };
 	
 	  Scene.prototype.resize = function() {
