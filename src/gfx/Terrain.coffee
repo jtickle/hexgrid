@@ -22,7 +22,7 @@ module.exports = class Terrain
     @grid = @scene.grid
     @ctx  = @scene.ctx
     @tfm  = @scene.tfm
-    @hg   = @scene.hg
+    @hex   = @scene.hg
 
   drawBackground: () =>
     @ctx.save()
@@ -45,8 +45,8 @@ module.exports = class Terrain
 
       stroke = @scene.color.lineIn
 
-      @hg.fillstroke(space, fill, stroke)
+      @hex.fillstroke(space, fill, stroke)
 
-      @hg.debugSpace(space)
+      @hex.debugSpace(space)
 
     # TODO: Draw the Terrain Type for the space

@@ -43,7 +43,7 @@ module.exports = class Scene
     @ctx    = @canvas.getContext('2d')
 
     @tfm = new Transforms(this)
-    @hg  = new HexGrid(this)
+    @hex  = new HexGrid(this)
 
     @terrain    = new Terrain(this)
     @structures = new Structures(this)
@@ -56,9 +56,9 @@ module.exports = class Scene
   render: (dt) =>
     @dt = dt
 
-    g = @grid.getRect(@hg.screenToHex([0         , 0          ]), # vertex
-                      @hg.screenToHex([0 + @width, 0          ]), # maxQ
-                      @hg.screenToHex([0         , 0 + @height])) # maxR
+    g = @grid.getRect(@hex.screenToHex([0         , 0          ]), # vertex
+                      @hex.screenToHex([0 + @width, 0          ]), # maxQ
+                      @hex.screenToHex([0         , 0 + @height])) # maxR
 
     @terrain.render(g)
     @structures.render(g)
@@ -95,7 +95,7 @@ module.exports = class Scene
                 y - (dy * @scale)])
 
   click: (pos) =>
-    pos = @tfm.screenToHex(pos)
+    pos = @hex.screenToHex(pos)
     @grid.toggleSelect(pos)
     undefined
 

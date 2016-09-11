@@ -30,7 +30,7 @@ run = () ->
   pt       = 0
 
   window.addEventListener "resize", () ->
-    sq.q('blank')
+    sq.q('resize')
 
   stats =
     cursec: 0
