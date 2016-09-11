@@ -48,6 +48,56 @@ module.exports = class Input
     @mouse.a = (e.buttons & 8 == 8)
     @mouse.b = (e.buttons & 16 == 16)
 
+  updateTouchData: (e) =>
+    e.preventDefault()
+    myT = {}
+    evT = e.touches
+    avgX = 0
+    avgY = 0
+    cnt  = 0
+
+    # Gather data from all touch points
+    for t in evT
+      do (t) ->
+        return undefined if typeof(t) != 'object'
+
+        myT[t.identifier] =
+          x: t.clientX
+          y: t.clientY
+
+        avgX += t.clientX
+        avgY += t.clientY
+        cnt  += 1
+
+    @touch.touches = myT
+
+    # Calculate center of all touches
+    if !cnt
+      @touch.average = null
+    else
+      @touch.average =
+        x: avgX / cnt
+        y: avgY / cnt
+
+    # If two touches, set Pinch Data
+    if e.touches.length == 2
+      pinch = {}
+      swap = null
+
+      pinch.x0 = e.touches[0].clientX
+      pinch.x1 = e.touches[1].clientX
+      pinch.y0 = e.touches[0].clientY
+      pinch.y1 = e.touches[1].clientY
+
+      pinch.dx = Math.abs(pinch.x0 - pinch.x1) / 2
+      pinch.dy = Math.abs(pinch.y0 - pinch.y1) / 2
+
+      pinch.r = Math.sqrt(pinch.dx*pinch.dx + pinch.dy*pinch.dy)
+
+      @touch.pinch = pinch
+    else
+      @touch.pinch = null
+
   getPos: (e) =>
     [e.clientX, e.clientY]
 
@@ -104,11 +154,32 @@ module.exports = class Input
     @sq.q('zoom', pos, e.deltaY / 1000)
     undefined
 
+  onTouchStart: (e) =>
+    updateTouchData e
+    undefined
+
+  onTouchMove: (e) =>
+    pp = @touch.pinch
+    pa = @touch.average
+    updateTouchData e
+    np = @touch.pinch
+    na = @touch.average
+
+    if e.touches.length > 0
+      if e.touches.length == 2
+        rq.q('zoom', (np.r - pp.r) / -100)
+      rq.q('pan', na.x - pa.x, na.y - pa.y)
+    undefined
+
   doListeners: (fn) =>
     fn("mousedown",   @onMouseDown)
     fn("mouseup",     @onMouseUp)
     fn("mousemove",   @onMouseMove)
     fn("wheel",       @onWheel)
+    fn("touchstart",  @onTouchStart)
+    fn("touchmove",   @onTouchMove)
+    fn("touchend",    @onTouchMove)
+    fn("touchcancel", @onTouchMove)
     this
 
   activate: (el) =>

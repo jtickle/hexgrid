@@ -8545,6 +8545,8 @@
 	    this.deactivate = bind(this.deactivate, this);
 	    this.activate = bind(this.activate, this);
 	    this.doListeners = bind(this.doListeners, this);
+	    this.onTouchMove = bind(this.onTouchMove, this);
+	    this.onTouchStart = bind(this.onTouchStart, this);
 	    this.onWheel = bind(this.onWheel, this);
 	    this.onMouseMove = bind(this.onMouseMove, this);
 	    this.onMouseUp = bind(this.onMouseUp, this);
@@ -8552,6 +8554,7 @@
 	    this.moveOnNotClick = bind(this.moveOnNotClick, this);
 	    this.mouseMoveViewport = bind(this.mouseMoveViewport, this);
 	    this.getPos = bind(this.getPos, this);
+	    this.updateTouchData = bind(this.updateTouchData, this);
 	    this.updateMouseData = bind(this.updateMouseData, this);
 	    this.active = false;
 	    this.CLICK_TIMEOUT = 300;
@@ -8582,6 +8585,55 @@
 	    this.mouse.r = e.buttons & 2 === 2;
 	    this.mouse.a = e.buttons & 8 === 8;
 	    return this.mouse.b = e.buttons & 16 === 16;
+	  };
+	
+	  Input.prototype.updateTouchData = function(e) {
+	    var avgX, avgY, cnt, evT, fn1, i, len, myT, pinch, swap, t;
+	    e.preventDefault();
+	    myT = {};
+	    evT = e.touches;
+	    avgX = 0;
+	    avgY = 0;
+	    cnt = 0;
+	    fn1 = function(t) {
+	      if (typeof t !== 'object') {
+	        return void 0;
+	      }
+	      myT[t.identifier] = {
+	        x: t.clientX,
+	        y: t.clientY
+	      };
+	      avgX += t.clientX;
+	      avgY += t.clientY;
+	      return cnt += 1;
+	    };
+	    for (i = 0, len = evT.length; i < len; i++) {
+	      t = evT[i];
+	      fn1(t);
+	    }
+	    this.touch.touches = myT;
+	    if (!cnt) {
+	      this.touch.average = null;
+	    } else {
+	      this.touch.average = {
+	        x: avgX / cnt,
+	        y: avgY / cnt
+	      };
+	    }
+	    if (e.touches.length === 2) {
+	      pinch = {};
+	      swap = null;
+	      pinch.x0 = e.touches[0].clientX;
+	      pinch.x1 = e.touches[1].clientX;
+	      pinch.y0 = e.touches[0].clientY;
+	      pinch.y1 = e.touches[1].clientY;
+	      pinch.dx = Math.abs(pinch.x0 - pinch.x1) / 2;
+	      pinch.dy = Math.abs(pinch.y0 - pinch.y1) / 2;
+	      pinch.r = Math.sqrt(pinch.dx * pinch.dx + pinch.dy * pinch.dy);
+	      return this.touch.pinch = pinch;
+	    } else {
+	      return this.touch.pinch = null;
+	    }
 	  };
 	
 	  Input.prototype.getPos = function(e) {
@@ -8653,11 +8705,36 @@
 	    return void 0;
 	  };
 	
+	  Input.prototype.onTouchStart = function(e) {
+	    updateTouchData(e);
+	    return void 0;
+	  };
+	
+	  Input.prototype.onTouchMove = function(e) {
+	    var na, np, pa, pp;
+	    pp = this.touch.pinch;
+	    pa = this.touch.average;
+	    updateTouchData(e);
+	    np = this.touch.pinch;
+	    na = this.touch.average;
+	    if (e.touches.length > 0) {
+	      if (e.touches.length === 2) {
+	        rq.q('zoom', (np.r - pp.r) / -100);
+	      }
+	      rq.q('pan', na.x - pa.x, na.y - pa.y);
+	    }
+	    return void 0;
+	  };
+	
 	  Input.prototype.doListeners = function(fn) {
 	    fn("mousedown", this.onMouseDown);
 	    fn("mouseup", this.onMouseUp);
 	    fn("mousemove", this.onMouseMove);
 	    fn("wheel", this.onWheel);
+	    fn("touchstart", this.onTouchStart);
+	    fn("touchmove", this.onTouchMove);
+	    fn("touchend", this.onTouchMove);
+	    fn("touchcancel", this.onTouchMove);
 	    return this;
 	  };
 	
