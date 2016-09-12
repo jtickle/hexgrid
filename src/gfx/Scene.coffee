@@ -31,7 +31,11 @@ module.exports = class Scene
   height:     0
   color:
     bgOut:   '#333'
-    bgIn:    '#CCC'
+    bgSel:   '#CFC'
+    bgWater: '#99C'
+    bgRare:  '#C99'
+    bgMetal: '#CCC'
+    bgNone:  '#CC9'
     lineOut: '#222'
     lineIn:  '#333'
     lineSel: '#0C0'
@@ -56,14 +60,24 @@ module.exports = class Scene
   render: (dt) =>
     @dt = dt
 
-    g = @grid.getRect(@hex.screenToHex([0         , 0          ]), # vertex
-                      @hex.screenToHex([0 + @width, 0          ]), # maxQ
-                      @hex.screenToHex([0         , 0 + @height])) # maxR
+    g = @grid.getRectBorder(@hex.screenToHex([0         , 0          ]), # vertex
+                            @hex.screenToHex([0 + @width, 0          ]), # maxQ
+                            @hex.screenToHex([0         , 0 + @height]), # maxR
+                            1)                                           # border
 
-    @terrain.render(g)
-    @structures.render(g)
-    @entities.render(g)
-    @ui.render(g)
+    @terrain.preRender()
+    @structures.preRender()
+    @entities.preRender()
+    @ui.preRender()
+
+    tiles = @ui.render(@entities.render(@structures.render(@terrain.render(g))))
+    while !(i = tiles.next()).done
+      undefined
+
+    @terrain.postRender()
+    @structures.postRender()
+    @entities.postRender()
+    @ui.postRender()
 
   setCenter: (pos) =>
     @center = pos
@@ -83,13 +97,10 @@ module.exports = class Scene
                 y - dy * @scale])
 
   zoom: (pos, ds) =>
-    console.log('zoom', pos, ds)
     [x,y] = @tfm.screenToWorld(pos)
     [cx,cy] = @center
-    console.log(x, y, cx, cy, @scale)
     dx = (x - cx) / @scale
     dy = (y - cy) / @scale
-    console.log(dx, dy)
     @adjustScaleBase(ds)
     @setCenter([x - (dx * @scale),
                 y - (dy * @scale)])
@@ -106,4 +117,3 @@ module.exports = class Scene
     @canvas.height = @height
       
     undefined
-

@@ -16,10 +16,25 @@
 # through which recipients can access the Corresponding Source.
 # 
 
-Space = require 'grid/Space'
+Tile = require 'grid/Tile'
+
+mkResource = (rThreshold, coefficient, range, base, otherwise) ->
+  if Math.random() > rThreshold
+    Math.floor(coefficient * (Math.random() * range + base))
+  else
+    otherwise
+
+mkTile = (pos) ->
+  # TODO: Perlin Noise
+  res =
+    water: mkResource(0.980, 1000000, 3, 5, 0)
+    metal: mkResource(0.985,  100000, 3, 4, 0)
+    rare:  mkResource(0.990,   10000, 3, 0, 0)
+
+  new Tile(pos, res, false)
 
 mkCol = (grid, pos) ->
-  new Space(pos, 'Empty', grid)
+  mkTile(pos)
 
 mkRow = (grid, r) ->
   maxv = grid.maxv
@@ -36,11 +51,14 @@ module.exports = class Grid
 
     @selected = null
 
+    ct = 0
     for I, i in @grid
       for J, j in I
         J.connect(this)
+        ct++
+    console.log('Generated ' + ct + ' tiles')
 
-  getSpace: (hex) =>
+  getTile: (hex) =>
     [q, r] = hex
     i = r + @maxv
     j = q + @maxv + Math.min(0, r)
@@ -50,20 +68,17 @@ module.exports = class Grid
     else
       @grid[i][j]
 
-  getRect: ([vq,vr], [qq,qr], [rq,rr]) =>
-
+  getRectBorder: ([vq,vr], [qq,qr], [rq,rr], n) =>
     rowCount = 0
-
-    rs = [qr .. rr]
-
     dq = qq - vq
 
+    rs = [qr .. rr]
     for r in rs
-      q0 = Math.max(qq - 2 - (2 * rowCount), vq - 1)
-      q1 = Math.min(q0 + dq + 2, qq + 1)
+      q0 = Math.max(qq - n - (2 * rowCount), vq - n)
+      q1 = Math.min(q0 + dq + (2*n), qq + n)
       qs = [q0 .. q1]
       for q in qs
-        s = @getSpace([q,r])
+        s = @getTile([q,r])
         if(!s?)
           continue
         else
@@ -71,7 +86,7 @@ module.exports = class Grid
       rowCount++
 
   toggleSelect: (pos) =>
-    sp = @getSpace(pos)
+    sp = @getTile(pos)
     console.log sp
 
     if @selected?

@@ -19,10 +19,16 @@
 module.exports = class Ui
   constructor: (@scene) ->
 
-    @ctx = @scene.ctx
     @grid = @scene.grid
-    @tfm = @scene.tfm
+    @hex  = @scene.hex
 
-  render: (spaces) =>
+  preRender: () =>
 
-    # TODO: Draw the Ui for the space
+  render: (tiles) =>
+    while !(i = tiles.next()).done
+      yield i.value
+
+  postRender: () =>
+    if(@grid.selected?)
+      @hex.fillstroke(@grid.selected, @scene.color.bgSel, @scene.color.lineSel)
+      @hex.debugTile(@grid.selected, @scene.color.lineSel)

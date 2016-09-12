@@ -30,7 +30,7 @@ module.exports = class Edge
     i = @neighbors.indexOf(me)
     if i < 0
       throw 'Specified side not involved in edge pairing'
-    if i > 2
+    if i > 1
       throw 'Too many sides in edge pairing'
     @neighbors[1-i]
 

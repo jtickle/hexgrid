@@ -103,60 +103,65 @@ module.exports = class HexGrid
     n = @hexDistance(a, b)
     (@cubeToHex(@cubeRound(@cubeLerp(@hexToCube(a), @hexToCube(b), (1.0/n) * i))) for i in [0..n])
 
-# Screen Drawing
+# Tile Drawing
 
-  drawSides: (space, min, max) =>
-    [x,y] = @tfm.worldToScreen(@hexCornerToWorld(space.pos, min - 1))
+  drawSides: (tile, min, max) =>
+    [x,y] = @tfm.worldToScreen(@hexCornerToWorld(tile.pos, min - 1))
     @ctx.moveTo(x,y)
 
     for n in [min..max]
-      [x,y] = @tfm.worldToScreen(@hexCornerToWorld(space.pos, n))
+      [x,y] = @tfm.worldToScreen(@hexCornerToWorld(tile.pos, n))
       @ctx.lineTo(x,y)
 
-  drawAllSides: (space) =>
-    @drawSides(space, 0, 5)
+  drawAllSides: (tile) =>
+    @drawSides(tile, 0, 5)
 
-  ctxStart: (space) =>
+  ctxStart: (tile) =>
     @ctx.save()
     @ctx.beginPath()
-    @drawAllSides(space)
+    @drawAllSides(tile)
 
   ctxEnd:() =>
     @ctx.closePath()
     @ctx.restore()
 
-  fill: (space, color) =>
-    @ctxStart(space)
+  fill: (tile, color) =>
+    @ctxStart(tile)
     @ctx.fillStyle = color
     @ctx.fill()
     @ctxEnd()
 
-  stroke: (space, color) =>
-    @ctxStart(space)
+  stroke: (tile, color) =>
+    @ctxStart(tile)
     @ctx.strokeStyle = color
     @ctx.lineWidth = 2
     @ctx.stroke()
     @ctxEnd()
 
-  fillstroke: (space, fcolor, scolor) =>
-    @ctxStart(space)
+  fillstroke: (tile, fcolor, scolor) =>
+    @ctxStart(tile)
     @ctx.strokeStyle = scolor
     @ctx.fillStyle = fcolor
     @ctx.fill()
     @ctx.stroke()
     @ctxEnd()
 
-  debugSpace: (space, tcolor = '#000') =>
+  debugTile: (tile, tcolor = '#000') =>
     @ctx.save()
-    pos = space.pos
+    pos = tile.pos
 
     [x,y] = @tfm.worldToScreen(@hexCenterToWorld(pos))
+    ox = x - (@scene.gridRadius / @scene.scale) / 2
+    oy = y - 14 / @scene.scale
 
     @ctx.fillStyle = tcolor
-    @ctx.textAlign = "center"
-    @ctx.font = "" + Math.floor(14 / @scene.scale) + "px sans-serif"
-    @ctx.fillText(space.type, x, y)
+    @ctx.textAlign = "left"
     @ctx.font = "" + Math.floor(12 / @scene.scale) + "px sans-serif"
-    @ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(30 / @scene.scale))
+    @ctx.fillText("W: " + tile.resources.water, ox, oy - Math.floor(14 / @scene.scale))
+    @ctx.fillText("R: " + tile.resources.rare,  ox, oy)
+    @ctx.fillText("M: " + tile.resources.metal, ox, oy + Math.floor(14 / @scene.scale))
+    @ctx.textAlign = "center"
+    @ctx.font = "" + Math.floor(10 / @scene.scale) + "px sans-serif"
+    @ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(40 / @scene.scale))
 
     @ctx.restore()

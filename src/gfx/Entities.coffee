@@ -23,5 +23,11 @@ module.exports = class Entities
     @tfm = @scene.tfm
     @grid = @scene.grid
 
-  render: (spaces) =>
+  preRender: () =>
+
+  render: (tiles) =>
+    while !(i = tiles.next()).done
+      yield i.value
     # TODO: Draw the Entities for the space
+
+  postRender: () =>

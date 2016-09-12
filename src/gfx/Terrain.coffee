@@ -22,7 +22,7 @@ module.exports = class Terrain
     @grid = @scene.grid
     @ctx  = @scene.ctx
     @tfm  = @scene.tfm
-    @hex   = @scene.hg
+    @hex  = @scene.hex
 
   drawBackground: () =>
     @ctx.save()
@@ -33,20 +33,28 @@ module.exports = class Terrain
 
     @ctx.restore()
 
-  render: (spaces) =>
+  preRender: () =>
+
+  render: (tiles) =>
     @drawBackground()
 
-    while !(i = spaces.next()).done
-      space = i.value
+    while !(i = tiles.next()).done
+      tile = i.value
+      r = tile.resources
+      c = @scene.color
 
-      fill = switch(space.type)
-        when "Empty" then @scene.color.bgIn
-        else @scene.color.error
+      fill = switch
+        when r.water > 0 then c.bgWater
+        when r.rare  > 0 then c.bgRare
+        when r.metal > 0 then c.bgMetal
+        else r = c.bgNone
 
       stroke = @scene.color.lineIn
 
-      @hex.fillstroke(space, fill, stroke)
+      @hex.fillstroke(tile, fill, stroke)
 
-      @hex.debugSpace(space)
+      yield tile
 
-    # TODO: Draw the Terrain Type for the space
+    # TODO: Draw the Terrain Type for the tiles
+
+  postRender: () =>

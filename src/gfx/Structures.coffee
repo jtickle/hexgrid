@@ -19,9 +19,16 @@
 module.exports = class Structures
   constructor: (@scene) ->
 
-    @ctx = @scene.ctx
-    @grid = @scene.grid
-    @tfm = @scene.tfm
+    @hex = @scene.hex
 
-  render: (spaces) =>
-    # TODO: Draw the Structures for the space
+  preRender: () =>
+
+  render: (tiles) =>
+    while !(i = tiles.next()).done
+      tile = i.value
+
+      @hex.debugTile(tile)
+
+      yield tile
+
+  postRender: () =>

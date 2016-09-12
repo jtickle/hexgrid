@@ -18,8 +18,8 @@
 
 Edge = require 'grid/Edge'
 
-module.exports = class Space
-  constructor: (@pos, @type) ->
+module.exports = class Tile
+  constructor: (@pos, @resources, @discovered) ->
 
     [q,r] = @pos
 
@@ -27,6 +27,8 @@ module.exports = class Space
       [q+1, r], [q+1, r-1], [q, r-1],
       [q-1, r], [q-1, r+1], [q, r+1]
     ]
+
+    @structure = null
 
     @edges = [null,null,null,null,null,null]
 
@@ -38,11 +40,11 @@ module.exports = class Space
     @grid = grid
 
     for d, i in @directions
-      s = @grid.getSpace(d)
-      @edges[i] = if !s? || !s.getOppositeEdge(i)
+      t = @grid.getTile(d)
+      @edges[i] = if !t? || !t.getOppositeEdge(i)
         new Edge(this)
       else
-        s.getOppositeEdge(i).setNeighbor(this)
+        t.getOppositeEdge(i).setNeighbor(this)
     undefined
 
   getEdge: (d) =>
@@ -56,3 +58,11 @@ module.exports = class Space
 
   getDirectionFromEdge: (e) =>
     @edges.indexOf(e)
+
+  toJSON: () =>
+    pos: @pos
+    resources: @resources
+    discovered: @discovered
+    structure: @structure
+    edges: @edges
+    selected: @selected
