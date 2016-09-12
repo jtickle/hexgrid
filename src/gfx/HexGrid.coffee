@@ -113,33 +113,30 @@ module.exports = class HexGrid
       [x,y] = @tfm.worldToScreen(@hexCornerToWorld(tile.pos, n))
       @ctx.lineTo(x,y)
 
-  drawAllSides: (tile) =>
-    @drawSides(tile, 0, 5)
-
-  ctxStart: (tile) =>
+  ctxStart: (tile, s0, sn) =>
     @ctx.save()
     @ctx.beginPath()
-    @drawAllSides(tile)
+    @drawSides(tile, s0, sn)
 
   ctxEnd:() =>
     @ctx.closePath()
     @ctx.restore()
 
   fill: (tile, color) =>
-    @ctxStart(tile)
+    @ctxStart(tile, 0, 5)
     @ctx.fillStyle = color
     @ctx.fill()
     @ctxEnd()
 
-  stroke: (tile, color) =>
-    @ctxStart(tile)
+  stroke: (tile, color, s0, sn) =>
+    @ctxStart(tile, s0, sn)
     @ctx.strokeStyle = color
     @ctx.lineWidth = 2
     @ctx.stroke()
     @ctxEnd()
 
   fillstroke: (tile, fcolor, scolor) =>
-    @ctxStart(tile)
+    @ctxStart(tile, 0, 5)
     @ctx.strokeStyle = scolor
     @ctx.fillStyle = fcolor
     @ctx.fill()

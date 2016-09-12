@@ -27,8 +27,6 @@ module.exports = class Structures
     while !(i = tiles.next()).done
       tile = i.value
 
-      @hex.debugTile(tile)
-
       yield tile
 
   postRender: () =>

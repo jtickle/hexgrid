@@ -8199,7 +8199,7 @@
 	  input = new Input(sq);
 	  pt = 0;
 	  window.addEventListener("resize", function() {
-	    return sq.q('blank');
+	    return sq.q('resize');
 	  });
 	  stats = {
 	    cursec: 0,
@@ -8272,13 +8272,31 @@
 /* 299 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Grid, Space, mkCol, mkRow,
+	var Grid, Tile, mkCol, mkResource, mkRow, mkTile,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
-	Space = __webpack_require__(300);
+	Tile = __webpack_require__(300);
+	
+	mkResource = function(rThreshold, coefficient, range, base, otherwise) {
+	  if (Math.random() > rThreshold) {
+	    return Math.floor(coefficient * (Math.random() * range + base));
+	  } else {
+	    return otherwise;
+	  }
+	};
+	
+	mkTile = function(pos) {
+	  var res;
+	  res = {
+	    water: mkResource(0.980, 1000000, 3, 5, 0),
+	    metal: mkResource(0.985, 100000, 3, 4, 0),
+	    rare: mkResource(0.990, 10000, 3, 0, 0)
+	  };
+	  return new Tile(pos, res, false);
+	};
 	
 	mkCol = function(grid, pos) {
-	  return new Space(pos, 'Empty', grid);
+	  return mkTile(pos);
 	};
 	
 	mkRow = function(grid, r) {
@@ -8295,11 +8313,11 @@
 	
 	module.exports = Grid = (function() {
 	  function Grid(radius) {
-	    var I, J, i, j, k, l, len, len1, r, ref;
+	    var I, J, ct, i, j, k, l, len, len1, r, ref;
 	    this.radius = radius;
 	    this.toggleSelect = bind(this.toggleSelect, this);
-	    this.getRect = bind(this.getRect, this);
-	    this.getSpace = bind(this.getSpace, this);
+	    this.getRectBorder = bind(this.getRectBorder, this);
+	    this.getTile = bind(this.getTile, this);
 	    this.maxv = this.radius - 1;
 	    this.diameter = (this.radius * 2) + 1;
 	    this.grid = (function() {
@@ -8311,17 +8329,20 @@
 	      return results;
 	    }).call(this);
 	    this.selected = null;
+	    ct = 0;
 	    ref = this.grid;
 	    for (i = k = 0, len = ref.length; k < len; i = ++k) {
 	      I = ref[i];
 	      for (j = l = 0, len1 = I.length; l < len1; j = ++l) {
 	        J = I[j];
 	        J.connect(this);
+	        ct++;
 	      }
 	    }
+	    console.log('Generated ' + ct + ' tiles');
 	  }
 	
-	  Grid.prototype.getSpace = function(hex) {
+	  Grid.prototype.getTile = function(hex) {
 	    var i, j, q, r;
 	    q = hex[0], r = hex[1];
 	    i = r + this.maxv;
@@ -8333,31 +8354,31 @@
 	    }
 	  };
 	
-	  Grid.prototype.getRect = function*(arg, arg1, arg2) {
-	    var dq, k, l, len, len1, m, n, q, q0, q1, qq, qr, qs, r, results, results1, results2, rowCount, rq, rr, rs, s, vq, vr;
+	  Grid.prototype.getRectBorder = function*(arg, arg1, arg2, n) {
+	    var dq, k, l, len, len1, m, o, q, q0, q1, qq, qr, qs, r, results, results1, results2, rowCount, rq, rr, rs, s, vq, vr;
 	    vq = arg[0], vr = arg[1];
 	    qq = arg1[0], qr = arg1[1];
 	    rq = arg2[0], rr = arg2[1];
 	    rowCount = 0;
+	    dq = qq - vq;
 	    rs = (function() {
 	      results = [];
 	      for (var k = qr; qr <= rr ? k <= rr : k >= rr; qr <= rr ? k++ : k--){ results.push(k); }
 	      return results;
 	    }).apply(this);
-	    dq = qq - vq;
 	    results1 = [];
 	    for (l = 0, len = rs.length; l < len; l++) {
 	      r = rs[l];
-	      q0 = Math.max(qq - 2 - (2 * rowCount), vq - 1);
-	      q1 = Math.min(q0 + dq + 2, qq + 1);
+	      q0 = Math.max(qq - n - (2 * rowCount), vq - n);
+	      q1 = Math.min(q0 + dq + (2 * n), qq + n);
 	      qs = (function() {
 	        results2 = [];
 	        for (var m = q0; q0 <= q1 ? m <= q1 : m >= q1; q0 <= q1 ? m++ : m--){ results2.push(m); }
 	        return results2;
 	      }).apply(this);
-	      for (n = 0, len1 = qs.length; n < len1; n++) {
-	        q = qs[n];
-	        s = this.getSpace([q, r]);
+	      for (o = 0, len1 = qs.length; o < len1; o++) {
+	        q = qs[o];
+	        s = this.getTile([q, r]);
 	        if (s == null) {
 	          continue;
 	        } else {
@@ -8371,7 +8392,7 @@
 	
 	  Grid.prototype.toggleSelect = function(pos) {
 	    var sp;
-	    sp = this.getSpace(pos);
+	    sp = this.getTile(pos);
 	    console.log(sp);
 	    if (this.selected != null) {
 	      this.selected.selected = false;
@@ -8381,7 +8402,8 @@
 	      return;
 	    }
 	    this.selected = sp;
-	    return this.selected.selected = true;
+	    this.selected.selected = true;
+	    return this.selected;
 	  };
 	
 	  return Grid;
@@ -8393,16 +8415,18 @@
 /* 300 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Edge, Space,
+	var Edge, Tile,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	Edge = __webpack_require__(301);
 	
-	module.exports = Space = (function() {
-	  function Space(pos, type) {
+	module.exports = Tile = (function() {
+	  function Tile(pos, resources, discovered) {
 	    var q, r, ref;
 	    this.pos = pos;
-	    this.type = type;
+	    this.resources = resources;
+	    this.discovered = discovered;
+	    this.toJSON = bind(this.toJSON, this);
 	    this.getDirectionFromEdge = bind(this.getDirectionFromEdge, this);
 	    this.getNeighbor = bind(this.getNeighbor, this);
 	    this.getOppositeEdge = bind(this.getOppositeEdge, this);
@@ -8410,12 +8434,13 @@
 	    this.connect = bind(this.connect, this);
 	    ref = this.pos, q = ref[0], r = ref[1];
 	    this.directions = [[q + 1, r], [q + 1, r - 1], [q, r - 1], [q - 1, r], [q - 1, r + 1], [q, r + 1]];
+	    this.structure = null;
 	    this.edges = [null, null, null, null, null, null];
 	    this.selected = false;
 	  }
 	
-	  Space.prototype.connect = function(grid) {
-	    var d, i, j, len, ref, s;
+	  Tile.prototype.connect = function(grid) {
+	    var d, i, j, len, ref, t;
 	    if ((this.grid != null)) {
 	      throw 'Already Connected';
 	    }
@@ -8423,29 +8448,40 @@
 	    ref = this.directions;
 	    for (i = j = 0, len = ref.length; j < len; i = ++j) {
 	      d = ref[i];
-	      s = this.grid.getSpace(d);
-	      this.edges[i] = (s == null) || !s.getOppositeEdge(i) ? new Edge(this) : s.getOppositeEdge(i).setNeighbor(this);
+	      t = this.grid.getTile(d);
+	      this.edges[i] = (t == null) || !t.getOppositeEdge(i) ? new Edge(this) : t.getOppositeEdge(i).setNeighbor(this);
 	    }
 	    return void 0;
 	  };
 	
-	  Space.prototype.getEdge = function(d) {
+	  Tile.prototype.getEdge = function(d) {
 	    return this.edges[d % 6];
 	  };
 	
-	  Space.prototype.getOppositeEdge = function(d) {
+	  Tile.prototype.getOppositeEdge = function(d) {
 	    return this.getEdge(d + 3);
 	  };
 	
-	  Space.prototype.getNeighbor = function(d) {
+	  Tile.prototype.getNeighbor = function(d) {
 	    return this.edges[d].getNeighbor(this);
 	  };
 	
-	  Space.prototype.getDirectionFromEdge = function(e) {
+	  Tile.prototype.getDirectionFromEdge = function(e) {
 	    return this.edges.indexOf(e);
 	  };
 	
-	  return Space;
+	  Tile.prototype.toJSON = function() {
+	    return {
+	      pos: this.pos,
+	      resources: this.resources,
+	      discovered: this.discovered,
+	      structure: this.structure,
+	      edges: this.edges,
+	      selected: this.selected
+	    };
+	  };
+	
+	  return Tile;
 
 	})();
 
@@ -8478,7 +8514,7 @@
 	    if (i < 0) {
 	      throw 'Specified side not involved in edge pairing';
 	    }
-	    if (i > 2) {
+	    if (i > 1) {
 	      throw 'Too many sides in edge pairing';
 	    }
 	    this.neighbors[1 - i];
@@ -8752,7 +8788,7 @@
 /* 304 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Entities, HexDraw, HexMath, Scene, Structures, Terrain, Transforms, Ui,
+	var Entities, HexGrid, Scene, Structures, Terrain, Transforms, Ui,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	Terrain = __webpack_require__(305);
@@ -8763,11 +8799,9 @@
 	
 	Ui = __webpack_require__(308);
 	
-	HexMath = __webpack_require__(309);
+	HexGrid = __webpack_require__(309);
 	
-	HexDraw = __webpack_require__(310);
-	
-	Transforms = __webpack_require__(311);
+	Transforms = __webpack_require__(310);
 	
 	module.exports = Scene = (function() {
 	  Scene.prototype.center = [0, 0];
@@ -8782,7 +8816,11 @@
 	
 	  Scene.prototype.color = {
 	    bgOut: '#333',
-	    bgIn: '#CCC',
+	    bgSel: '#CFC',
+	    bgWater: '#99C',
+	    bgRare: '#C99',
+	    bgMetal: '#CCC',
+	    bgNone: '#CC9',
 	    lineOut: '#222',
 	    lineIn: '#333',
 	    lineSel: '#0C0',
@@ -8804,9 +8842,8 @@
 	    this.render = bind(this.render, this);
 	    this.canvas = document.getElementById(this.domId);
 	    this.ctx = this.canvas.getContext('2d');
-	    this.hm = new HexMath(this.gridRadius);
 	    this.tfm = new Transforms(this);
-	    this.hd = new HexDraw(this);
+	    this.hex = new HexGrid(this);
 	    this.terrain = new Terrain(this);
 	    this.structures = new Structures(this);
 	    this.entities = new Entities(this);
@@ -8816,13 +8853,21 @@
 	  }
 	
 	  Scene.prototype.render = function(dt) {
-	    var g;
+	    var g, i, tiles;
 	    this.dt = dt;
-	    g = this.grid.getRect(this.tfm.screenToHex([0, 0]), this.tfm.screenToHex([0 + this.width, 0]), this.tfm.screenToHex([0, 0 + this.height]));
-	    this.terrain.render(g);
-	    this.structures.render(g);
-	    this.entities.render(g);
-	    return this.ui.render(g);
+	    g = this.grid.getRectBorder(this.hex.screenToHex([0, 0]), this.hex.screenToHex([0 + this.width, 0]), this.hex.screenToHex([0, 0 + this.height]), 1);
+	    this.terrain.preRender();
+	    this.structures.preRender();
+	    this.entities.preRender();
+	    this.ui.preRender();
+	    tiles = this.ui.render(this.entities.render(this.structures.render(this.terrain.render(g))));
+	    while (!(i = tiles.next()).done) {
+	      void 0;
+	    }
+	    this.terrain.postRender();
+	    this.structures.postRender();
+	    this.entities.postRender();
+	    return this.ui.postRender();
 	  };
 	
 	  Scene.prototype.setCenter = function(pos) {
@@ -8848,19 +8893,16 @@
 	
 	  Scene.prototype.zoom = function(pos, ds) {
 	    var cx, cy, dx, dy, ref, ref1, x, y;
-	    console.log('zoom', pos, ds);
 	    ref = this.tfm.screenToWorld(pos), x = ref[0], y = ref[1];
 	    ref1 = this.center, cx = ref1[0], cy = ref1[1];
-	    console.log(x, y, cx, cy, this.scale);
 	    dx = (x - cx) / this.scale;
 	    dy = (y - cy) / this.scale;
-	    console.log(dx, dy);
 	    this.adjustScaleBase(ds);
 	    return this.setCenter([x - (dx * this.scale), y - (dy * this.scale)]);
 	  };
 	
 	  Scene.prototype.click = function(pos) {
-	    pos = this.tfm.screenToHex(pos);
+	    pos = this.hex.screenToHex(pos);
 	    this.grid.toggleSelect(pos);
 	    return void 0;
 	  };
@@ -8888,13 +8930,14 @@
 	module.exports = Terrain = (function() {
 	  function Terrain(scene) {
 	    this.scene = scene;
+	    this.postRender = bind(this.postRender, this);
 	    this.render = bind(this.render, this);
+	    this.preRender = bind(this.preRender, this);
 	    this.drawBackground = bind(this.drawBackground, this);
 	    this.grid = this.scene.grid;
-	    this.tfm = this.scene.tfm;
-	    this.hm = this.scene.hm;
 	    this.ctx = this.scene.ctx;
-	    this.hd = this.scene.hd;
+	    this.tfm = this.scene.tfm;
+	    this.hex = this.scene.hex;
 	  }
 	
 	  Terrain.prototype.drawBackground = function() {
@@ -8904,26 +8947,36 @@
 	    return this.ctx.restore();
 	  };
 	
-	  Terrain.prototype.render = function(spaces) {
-	    var fill, i, results, space, stroke;
+	  Terrain.prototype.preRender = function() {};
+	
+	  Terrain.prototype.render = function*(tiles) {
+	    var c, fill, i, r, results, stroke, tile;
 	    this.drawBackground();
 	    results = [];
-	    while (!(i = spaces.next()).done) {
-	      space = i.value;
+	    while (!(i = tiles.next()).done) {
+	      tile = i.value;
+	      r = tile.resources;
+	      c = this.scene.color;
 	      fill = (function() {
-	        switch (space.type) {
-	          case "Empty":
-	            return this.scene.color.bgIn;
+	        switch (false) {
+	          case !(r.water > 0):
+	            return c.bgWater;
+	          case !(r.rare > 0):
+	            return c.bgRare;
+	          case !(r.metal > 0):
+	            return c.bgMetal;
 	          default:
-	            return this.scene.color.error;
+	            return r = c.bgNone;
 	        }
-	      }).call(this);
+	      })();
 	      stroke = this.scene.color.lineIn;
-	      this.hd.fillstroke(space, fill, stroke);
-	      results.push(this.hd.debugSpace(space));
+	      this.hex.fillstroke(tile, fill, stroke);
+	      results.push((yield tile));
 	    }
 	    return results;
 	  };
+	
+	  Terrain.prototype.postRender = function() {};
 	
 	  return Terrain;
 
@@ -8940,13 +8993,25 @@
 	module.exports = Structures = (function() {
 	  function Structures(scene) {
 	    this.scene = scene;
+	    this.postRender = bind(this.postRender, this);
 	    this.render = bind(this.render, this);
-	    this.ctx = this.scene.ctx;
-	    this.grid = this.scene.grid;
-	    this.tfm = this.scene.tfm;
+	    this.preRender = bind(this.preRender, this);
+	    this.hex = this.scene.hex;
 	  }
 	
-	  Structures.prototype.render = function(spaces) {};
+	  Structures.prototype.preRender = function() {};
+	
+	  Structures.prototype.render = function*(tiles) {
+	    var i, results, tile;
+	    results = [];
+	    while (!(i = tiles.next()).done) {
+	      tile = i.value;
+	      results.push((yield tile));
+	    }
+	    return results;
+	  };
+	
+	  Structures.prototype.postRender = function() {};
 	
 	  return Structures;
 
@@ -8963,13 +9028,26 @@
 	module.exports = Entities = (function() {
 	  function Entities(scene) {
 	    this.scene = scene;
+	    this.postRender = bind(this.postRender, this);
 	    this.render = bind(this.render, this);
+	    this.preRender = bind(this.preRender, this);
 	    this.ctx = this.scene.ctx;
 	    this.tfm = this.scene.tfm;
 	    this.grid = this.scene.grid;
 	  }
 	
-	  Entities.prototype.render = function(spaces) {};
+	  Entities.prototype.preRender = function() {};
+	
+	  Entities.prototype.render = function*(tiles) {
+	    var i, results;
+	    results = [];
+	    while (!(i = tiles.next()).done) {
+	      results.push((yield i.value));
+	    }
+	    return results;
+	  };
+	
+	  Entities.prototype.postRender = function() {};
 	
 	  return Entities;
 
@@ -8986,13 +9064,30 @@
 	module.exports = Ui = (function() {
 	  function Ui(scene) {
 	    this.scene = scene;
+	    this.postRender = bind(this.postRender, this);
 	    this.render = bind(this.render, this);
-	    this.ctx = this.scene.ctx;
+	    this.preRender = bind(this.preRender, this);
 	    this.grid = this.scene.grid;
-	    this.tfm = this.scene.tfm;
+	    this.hex = this.scene.hex;
 	  }
 	
-	  Ui.prototype.render = function(spaces) {};
+	  Ui.prototype.preRender = function() {};
+	
+	  Ui.prototype.render = function*(tiles) {
+	    var i, results;
+	    results = [];
+	    while (!(i = tiles.next()).done) {
+	      results.push((yield i.value));
+	    }
+	    return results;
+	  };
+	
+	  Ui.prototype.postRender = function() {
+	    if ((this.grid.selected != null)) {
+	      this.hex.fillstroke(this.grid.selected, this.scene.color.bgSel, this.scene.color.lineSel);
+	      return this.hex.debugTile(this.grid.selected, this.scene.color.lineSel);
+	    }
+	  };
 	
 	  return Ui;
 
@@ -9003,15 +9098,20 @@
 /* 309 */
 /***/ function(module, exports) {
 
-	var HexMath,
+	var HexGrid,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
-	module.exports = HexMath = (function() {
-	  function HexMath(gridRadius) {
-	    this.gridRadius = gridRadius;
+	module.exports = HexGrid = (function() {
+	  function HexGrid(scene) {
+	    this.scene = scene;
+	    this.debugTile = bind(this.debugTile, this);
+	    this.fillstroke = bind(this.fillstroke, this);
+	    this.stroke = bind(this.stroke, this);
+	    this.fill = bind(this.fill, this);
+	    this.ctxEnd = bind(this.ctxEnd, this);
+	    this.ctxStart = bind(this.ctxStart, this);
+	    this.drawSides = bind(this.drawSides, this);
 	    this.createHexLine = bind(this.createHexLine, this);
-	    this.hexCornerToWorld = bind(this.hexCornerToWorld, this);
-	    this.hexCenterToWorld = bind(this.hexCenterToWorld, this);
 	    this.hexDistance = bind(this.hexDistance, this);
 	    this.hexRound = bind(this.hexRound, this);
 	    this.cubeRound = bind(this.cubeRound, this);
@@ -9020,16 +9120,41 @@
 	    this.lerp = bind(this.lerp, this);
 	    this.cubeToHex = bind(this.cubeToHex, this);
 	    this.hexToCube = bind(this.hexToCube, this);
+	    this.hexCornerToWorld = bind(this.hexCornerToWorld, this);
+	    this.hexCenterToWorld = bind(this.hexCenterToWorld, this);
 	    this.worldToHex = bind(this.worldToHex, this);
+	    this.screenToHex = bind(this.screenToHex, this);
+	    this.ctx = this.scene.ctx;
+	    this.tfm = this.scene.tfm;
 	  }
 	
-	  HexMath.prototype.worldToHex = function(pos) {
-	    var x, y;
-	    x = pos[0], y = pos[1];
-	    return [x * 2 / 3 / this.gridRadius, (-x / 3 + Math.sqrt(3) / 3 * y) / this.gridRadius];
+	  HexGrid.prototype.screenToHex = function(screen) {
+	    return this.hexRound(this.worldToHex(this.tfm.screenToWorld(screen)));
 	  };
 	
-	  HexMath.prototype.hexToCube = function(h) {
+	  HexGrid.prototype.worldToHex = function(pos) {
+	    var x, y;
+	    x = pos[0], y = pos[1];
+	    return [x * 2 / 3 / this.scene.gridRadius, (-x / 3 + Math.sqrt(3) / 3 * y) / this.scene.gridRadius];
+	  };
+	
+	  HexGrid.prototype.hexCenterToWorld = function(hex) {
+	    var hq, hr, x, y;
+	    hq = hex[0], hr = hex[1];
+	    x = this.scene.gridRadius * 3 / 2 * hq;
+	    y = this.scene.gridRadius * Math.sqrt(3) * (hr + hq / 2);
+	    return [x, y];
+	  };
+	
+	  HexGrid.prototype.hexCornerToWorld = function(hex, corner) {
+	    var cx, cy, hq, hr, ref, theta;
+	    hq = hex[0], hr = hex[1];
+	    ref = this.hexCenterToWorld(hex), cx = ref[0], cy = ref[1];
+	    theta = Math.PI / 180 * (60 * ((6 - corner) % 6));
+	    return [cx + this.scene.gridRadius * Math.cos(theta), cy + this.scene.gridRadius * Math.sin(theta)];
+	  };
+	
+	  HexGrid.prototype.hexToCube = function(h) {
 	    var x, y, z;
 	    x = h[0];
 	    z = h[1];
@@ -9037,31 +9162,31 @@
 	    return [x, y, z];
 	  };
 	
-	  HexMath.prototype.cubeToHex = function(c) {
+	  HexGrid.prototype.cubeToHex = function(c) {
 	    var _, q, r;
 	    q = c[0], _ = c[1], r = c[2];
 	    return [q, r];
 	  };
 	
-	  HexMath.prototype.lerp = function(a, b, t) {
+	  HexGrid.prototype.lerp = function(a, b, t) {
 	    return a + (b - a) * t;
 	  };
 	
-	  HexMath.prototype.cubeLerp = function(a, b, t) {
+	  HexGrid.prototype.cubeLerp = function(a, b, t) {
 	    var aX, aY, aZ, bX, bY, bZ;
 	    aX = a[0], aY = a[1], aZ = a[2];
 	    bX = b[0], bY = b[1], bZ = b[2];
 	    return [this.lerp(aX, bX, t), this.lerp(aY, bY, t), this.lerp(aZ, bZ, t)];
 	  };
 	
-	  HexMath.prototype.cubeDistance = function(a, b) {
+	  HexGrid.prototype.cubeDistance = function(a, b) {
 	    var aX, aY, aZ, bX, bY, bZ;
 	    aX = a[0], aY = a[1], aZ = a[2];
 	    bX = b[0], bY = b[1], bZ = b[2];
 	    return (Math.abs(aX - bX) + Math.abs(aY - bY) + Math.abs(aZ - bZ)) / 2;
 	  };
 	
-	  HexMath.prototype.cubeRound = function(c) {
+	  HexGrid.prototype.cubeRound = function(c) {
 	    var dx, dy, dz, rx, ry, rz, x, y, z;
 	    x = c[0], y = c[1], z = c[2];
 	    rx = Math.round(x);
@@ -9080,31 +9205,15 @@
 	    return [rx, ry, rz];
 	  };
 	
-	  HexMath.prototype.hexRound = function(h) {
+	  HexGrid.prototype.hexRound = function(h) {
 	    return this.cubeToHex(this.cubeRound(this.hexToCube(h)));
 	  };
 	
-	  HexMath.prototype.hexDistance = function(a, b) {
+	  HexGrid.prototype.hexDistance = function(a, b) {
 	    return this.cubeDistance(this.hexToCube(a), this.hexToCube(b));
 	  };
 	
-	  HexMath.prototype.hexCenterToWorld = function(hex) {
-	    var hq, hr, x, y;
-	    hq = hex[0], hr = hex[1];
-	    x = this.gridRadius * 3 / 2 * hq;
-	    y = this.gridRadius * Math.sqrt(3) * (hr + hq / 2);
-	    return [x, y];
-	  };
-	
-	  HexMath.prototype.hexCornerToWorld = function(hex, corner) {
-	    var cx, cy, hq, hr, ref, theta;
-	    hq = hex[0], hr = hex[1];
-	    ref = this.hexCenterToWorld(hex), cx = ref[0], cy = ref[1];
-	    theta = Math.PI / 180 * (60 * ((6 - corner) % 6));
-	    return [cx + this.gridRadius * Math.cos(theta), cy + this.gridRadius * Math.sin(theta)];
-	  };
-	
-	  HexMath.prototype.createHexLine = function(a, b) {
+	  HexGrid.prototype.createHexLine = function(a, b) {
 	    var i, j, n, ref, results;
 	    n = this.hexDistance(a, b);
 	    results = [];
@@ -9114,7 +9223,76 @@
 	    return results;
 	  };
 	
-	  return HexMath;
+	  HexGrid.prototype.drawSides = function(tile, min, max) {
+	    var j, n, ref, ref1, ref2, ref3, results, x, y;
+	    ref = this.tfm.worldToScreen(this.hexCornerToWorld(tile.pos, min - 1)), x = ref[0], y = ref[1];
+	    this.ctx.moveTo(x, y);
+	    results = [];
+	    for (n = j = ref1 = min, ref2 = max; ref1 <= ref2 ? j <= ref2 : j >= ref2; n = ref1 <= ref2 ? ++j : --j) {
+	      ref3 = this.tfm.worldToScreen(this.hexCornerToWorld(tile.pos, n)), x = ref3[0], y = ref3[1];
+	      results.push(this.ctx.lineTo(x, y));
+	    }
+	    return results;
+	  };
+	
+	  HexGrid.prototype.ctxStart = function(tile, s0, sn) {
+	    this.ctx.save();
+	    this.ctx.beginPath();
+	    return this.drawSides(tile, s0, sn);
+	  };
+	
+	  HexGrid.prototype.ctxEnd = function() {
+	    this.ctx.closePath();
+	    return this.ctx.restore();
+	  };
+	
+	  HexGrid.prototype.fill = function(tile, color) {
+	    this.ctxStart(tile, 0, 5);
+	    this.ctx.fillStyle = color;
+	    this.ctx.fill();
+	    return this.ctxEnd();
+	  };
+	
+	  HexGrid.prototype.stroke = function(tile, color, s0, sn) {
+	    this.ctxStart(tile, s0, sn);
+	    this.ctx.strokeStyle = color;
+	    this.ctx.lineWidth = 2;
+	    this.ctx.stroke();
+	    return this.ctxEnd();
+	  };
+	
+	  HexGrid.prototype.fillstroke = function(tile, fcolor, scolor) {
+	    this.ctxStart(tile, 0, 5);
+	    this.ctx.strokeStyle = scolor;
+	    this.ctx.fillStyle = fcolor;
+	    this.ctx.fill();
+	    this.ctx.stroke();
+	    return this.ctxEnd();
+	  };
+	
+	  HexGrid.prototype.debugTile = function(tile, tcolor) {
+	    var ox, oy, pos, ref, x, y;
+	    if (tcolor == null) {
+	      tcolor = '#000';
+	    }
+	    this.ctx.save();
+	    pos = tile.pos;
+	    ref = this.tfm.worldToScreen(this.hexCenterToWorld(pos)), x = ref[0], y = ref[1];
+	    ox = x - (this.scene.gridRadius / this.scene.scale) / 2;
+	    oy = y - 14 / this.scene.scale;
+	    this.ctx.fillStyle = tcolor;
+	    this.ctx.textAlign = "left";
+	    this.ctx.font = "" + Math.floor(12 / this.scene.scale) + "px sans-serif";
+	    this.ctx.fillText("W: " + tile.resources.water, ox, oy - Math.floor(14 / this.scene.scale));
+	    this.ctx.fillText("R: " + tile.resources.rare, ox, oy);
+	    this.ctx.fillText("M: " + tile.resources.metal, ox, oy + Math.floor(14 / this.scene.scale));
+	    this.ctx.textAlign = "center";
+	    this.ctx.font = "" + Math.floor(10 / this.scene.scale) + "px sans-serif";
+	    this.ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(40 / this.scene.scale));
+	    return this.ctx.restore();
+	  };
+	
+	  return HexGrid;
 
 	})();
 
@@ -9123,112 +9301,14 @@
 /* 310 */
 /***/ function(module, exports) {
 
-	var HexDraw,
-	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-	
-	module.exports = HexDraw = (function() {
-	  function HexDraw(scene) {
-	    this.scene = scene;
-	    this.debugSpace = bind(this.debugSpace, this);
-	    this.fillstroke = bind(this.fillstroke, this);
-	    this.stroke = bind(this.stroke, this);
-	    this.fill = bind(this.fill, this);
-	    this.ctxEnd = bind(this.ctxEnd, this);
-	    this.ctxStart = bind(this.ctxStart, this);
-	    this.drawAllSides = bind(this.drawAllSides, this);
-	    this.drawSides = bind(this.drawSides, this);
-	    this.tfm = this.scene.tfm;
-	    this.hm = this.scene.hm;
-	    this.ctx = this.scene.ctx;
-	  }
-	
-	  HexDraw.prototype.drawSides = function(space, min, max) {
-	    var i, n, ref, ref1, ref2, ref3, results, x, y;
-	    ref = this.tfm.worldToScreen(this.hm.hexCornerToWorld(space.pos, min - 1)), x = ref[0], y = ref[1];
-	    this.ctx.moveTo(x, y);
-	    results = [];
-	    for (n = i = ref1 = min, ref2 = max; ref1 <= ref2 ? i <= ref2 : i >= ref2; n = ref1 <= ref2 ? ++i : --i) {
-	      ref3 = this.tfm.worldToScreen(this.hm.hexCornerToWorld(space.pos, n)), x = ref3[0], y = ref3[1];
-	      results.push(this.ctx.lineTo(x, y));
-	    }
-	    return results;
-	  };
-	
-	  HexDraw.prototype.drawAllSides = function(space) {
-	    return this.drawSides(space, 0, 5);
-	  };
-	
-	  HexDraw.prototype.ctxStart = function(space) {
-	    this.ctx.save();
-	    this.ctx.beginPath();
-	    return this.drawAllSides(space);
-	  };
-	
-	  HexDraw.prototype.ctxEnd = function() {
-	    this.ctx.closePath();
-	    return this.ctx.restore();
-	  };
-	
-	  HexDraw.prototype.fill = function(space, color) {
-	    this.ctxStart(space);
-	    this.ctx.fillStyle = color;
-	    this.ctx.fill();
-	    return this.ctxEnd();
-	  };
-	
-	  HexDraw.prototype.stroke = function(space, color) {
-	    this.ctxStart(space);
-	    this.ctx.strokeStyle = color;
-	    this.ctx.lineWidth = 2;
-	    this.ctx.stroke();
-	    return this.ctxEnd();
-	  };
-	
-	  HexDraw.prototype.fillstroke = function(space, fcolor, scolor) {
-	    this.ctxStart(space);
-	    this.ctx.strokeStyle = scolor;
-	    this.ctx.fillStyle = fcolor;
-	    this.ctx.fill();
-	    this.ctx.stroke();
-	    return this.ctxEnd();
-	  };
-	
-	  HexDraw.prototype.debugSpace = function(space, tcolor) {
-	    var pos, ref, x, y;
-	    if (tcolor == null) {
-	      tcolor = '#000';
-	    }
-	    this.ctx.save();
-	    pos = space.pos;
-	    ref = this.tfm.worldToScreen(this.hm.hexCenterToWorld(pos)), x = ref[0], y = ref[1];
-	    this.ctx.fillStyle = tcolor;
-	    this.ctx.textAlign = "center";
-	    this.ctx.font = "" + Math.floor(14 / this.scene.scale) + "px sans-serif";
-	    this.ctx.fillText(space.type, x, y);
-	    this.ctx.font = "" + Math.floor(12 / this.scene.scale) + "px sans-serif";
-	    this.ctx.fillText("" + pos[0] + ", " + pos[1], x, y + Math.floor(30 / this.scene.scale));
-	    return this.ctx.restore();
-	  };
-	
-	  return HexDraw;
-
-	})();
-
-
-/***/ },
-/* 311 */
-/***/ function(module, exports) {
-
 	var Transforms,
 	  bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 	
 	module.exports = Transforms = (function() {
 	  function Transforms(scene) {
 	    this.scene = scene;
-	    this.screenToHex = bind(this.screenToHex, this);
 	    this.worldToScreen = bind(this.worldToScreen, this);
 	    this.screenToWorld = bind(this.screenToWorld, this);
-	    this.hm = this.scene.hm;
 	  }
 	
 	  Transforms.prototype.screenToWorld = function(pos) {
@@ -9243,10 +9323,6 @@
 	    x = pos[0], y = pos[1];
 	    ref = this.scene.center, cx = ref[0], cy = ref[1];
 	    return [(this.scene.width / 2) + ((x - cx) / this.scene.scale), (this.scene.height / 2) + ((y - cy) / this.scene.scale)];
-	  };
-	
-	  Transforms.prototype.screenToHex = function(screen) {
-	    return this.hm.hexRound(this.hm.worldToHex(this.screenToWorld(screen)));
 	  };
 	
 	  return Transforms;
