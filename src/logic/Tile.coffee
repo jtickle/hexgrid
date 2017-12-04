@@ -16,31 +16,14 @@
 # through which recipients can access the Corresponding Source.
 #
 
-module.exports = class Terrain
-
-  preRender: (draw) =>
-    draw.ctx.save()
-
-    # Blank, dark background
-    draw.ctx.fillStyle = draw.color.bgOut
-    draw.ctx.fillRect(0,0,draw.view.canvas.width,draw.view.canvas.height)
-
-    draw.ctx.restore()
+module.exports = class Tile
+  constructor: (@state, @draw) ->
     undefined
 
-  render: (draw, tile) =>
-    r = tile.resources
-    c = draw.color
+  registerHandlerWith: (register) =>
+    register 'tile.click', @click
+    undefined
 
-    fill = switch
-      when r.water > 0 then c.bgWater
-      when r.rare  > 0 then c.bgRare
-      when r.metal > 0 then c.bgMetal
-      else r = c.bgNone
-
-    stroke = draw.color.lineIn
-
-    draw.fillstroke(tile, fill, stroke)
-
-  postRender: (draw) =>
+  click: (pos) =>
+    @state.grid.toggleSelect @draw.screenToHex pos
     undefined

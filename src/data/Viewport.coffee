@@ -16,31 +16,38 @@
 # through which recipients can access the Corresponding Source.
 #
 
-module.exports = class Terrain
+module.exports = class Viewport
+  center:    [0,0]
+  scaleBase:  0
+  scale:      1
+  height:     0
+  width:      0
 
-  preRender: (draw) =>
-    draw.ctx.save()
+  constructor: (@domId) ->
+    @canvas = document.getElementById(@domId)
+    @ctx    = @canvas.getContext('2d')
 
-    # Blank, dark background
-    draw.ctx.fillStyle = draw.color.bgOut
-    draw.ctx.fillRect(0,0,draw.view.canvas.width,draw.view.canvas.height)
+  setScaleBase: (s) =>
+    @scaleBase = s
+    @scale = Math.pow(Math.E, @scaleBase)
+    this
 
-    draw.ctx.restore()
-    undefined
+  adjustScaleBase: (ds) =>
+    @setScaleBase(@scaleBase + ds)
+    this
 
-  render: (draw, tile) =>
-    r = tile.resources
-    c = draw.color
+  screenToWorld: (pos) =>
+    [x,y] = pos
+    [cx,cy] = @center
+    [
+      ((x - (@width/2)) * @scale) + cx,
+      ((y - (@height/2)) * @scale) + cy
+    ]
 
-    fill = switch
-      when r.water > 0 then c.bgWater
-      when r.rare  > 0 then c.bgRare
-      when r.metal > 0 then c.bgMetal
-      else r = c.bgNone
-
-    stroke = draw.color.lineIn
-
-    draw.fillstroke(tile, fill, stroke)
-
-  postRender: (draw) =>
-    undefined
+  worldToScreen: (pos) =>
+    [x,y] = pos
+    [cx,cy] = @center
+    [
+      (@width/2) + ((x - cx) / @scale),
+      (@height/2) + ((y - cy) / @scale)
+    ]

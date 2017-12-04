@@ -207,7 +207,8 @@ module.exports = class Input
     undefined
 
   onResize: (e) =>
-    @emitEvent('resize')
+    @emitEvent('resize', document.documentElement.clientWidth,
+                         document.documentElement.clientHeight)
 
   doListeners: (fn) =>
     fn("mousedown",   @onMouseDown)
@@ -223,6 +224,7 @@ module.exports = class Input
   activate: (el) =>
     @doListeners(el.addEventListener)
     window.addEventListener "resize", @onResize
+    @onResize()
 
   deactivate: (el) =>
     @doListeners(el.removeEventListener)

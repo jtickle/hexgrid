@@ -17,20 +17,15 @@
 #
 
 module.exports = class Ui
-  constructor: (@scene) ->
 
-    @grid = @scene.grid
-    @hex  = @scene.hex
+  preRender: (draw) =>
+    undefined
 
-  preRender: () =>
+  render: (draw, tile) =>
+    if tile.selected
+      draw.fillstroke(tile, draw.color.bgSel, draw.color.lineSel)
+      draw.debugTile(tile, draw.color.lineSel)
+    undefined
 
-  render: (tiles) =>
-    ret = []
-    for tile in tiles
-      ret.push(tile)
-    return ret
-
-  postRender: () =>
-    if(@grid.selected?)
-      @hex.fillstroke(@grid.selected, @scene.color.bgSel, @scene.color.lineSel)
-      @hex.debugTile(@grid.selected, @scene.color.lineSel)
+  postRender: (draw) =>
+    undefined

@@ -16,27 +16,21 @@
 # through which recipients can access the Corresponding Source.
 #
 
-memo = {}
+# Debugging function - shows a stat in the DOM
+showStat = (id, n) ->
+  document.getElementById('stats-' + id).textContent = n
+  undefined
 
-module.exports = class ActionQueue
-  constructor: (@target) ->
-    @queue = []
+module.exports = class Ui
+  constructor: (@state, @draw) ->
+    undefined
 
-  # q(@target.function, args...)
-  q: (m...) =>
-    @queue.push m
+  registerHandlerWith: (register) =>
+    register 'ui.stats.update', @updateStats
+    undefined
 
-  qfn: (cmd) =>
-    if !memo[cmd]?
-      memo[cmd] = (m...) => @q cmd, m...
-    memo[cmd]
-
-  process: () =>
-    while @queue.length > 0
-      next = @queue.shift()
-      method = next.shift()
-      if !@target[method]?
-        console.err('Queue handler is undefined:' + method, next)
-        continue
-
-      @target[method].apply(@target, next)
+  updateStats: (stats) =>
+    showStat 'fps', stats['render']['count']
+    for stat, vals of stats
+      showStat stat, vals['average']
+    undefined

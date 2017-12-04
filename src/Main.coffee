@@ -16,89 +16,15 @@
 # through which recipients can access the Corresponding Source.
 #
 
-Grid        = require 'grid/Grid.coffee'
-ActionQueue = require 'ActionQueue.coffee'
-Input       = require 'Input.coffee'
-Timer       = require 'Timer.coffee'
-Stats       = require 'Stats.coffee'
-Scene       = require 'gfx/Scene.coffee'
-
-# Debugging function - shows a stat in the DOM
-showStat = (id, n) ->
-  document.getElementById('stats-' + id).textContent = n
-
-# Debugging function - shows all stats from a Stats object in the DOM
-showAllStats = (stats) ->
-  for stat in stats.stats
-    showStat stat, stats.getAverage(stat)
-
-run = () ->
-  # Game Database
-  grid     = new Grid(16)
-
-  # Scene Controller
-  scene    = new Scene('hexgrid', 50, grid)
-
-  # Action Queue
-  sq       = new ActionQueue(scene)
-
-  # Input Driver
-  input    = new Input(sq)
-
-  # Debugging Timer
-  timer    = new Timer(1000)
-
-  # Debgging Stats
-  stats    = new Stats(timer, ['update', 'render', 'frame'])
-
-  # Input library attempts to be generic.  This space is for queueing
-  # up scene events in reaction to input handlers.  Probably should
-  # do this better.
-  input.addEventListener "pan", sq.qfn 'pan'
-  input.addEventListener "click", sq.qfn 'click'
-  input.addEventListener "zoom", sq.qfn 'zoom'
-  input.addEventListener "resize", sq.qfn 'resize'
-
-  # Connect input driver to main canvas
-  input.activate scene.canvas
-
-  animate  = (ct) ->
-
-    # Calculate time in seconds since last animation began using
-    # time provided by requestAnimationFrame, saves a date lookup
-    dt = if timer.empty() then ct else timer.pop ct
-
-    # Save current rAF time
-    timer.push ct
-
-    # Start a timer for how long it takes to actually process
-    # a whole frame
-    stats.time 'frame', () ->
-
-      # Process the scene queue
-      stats.time 'update', () -> sq.process()
-
-      # Render the Scene
-      stats.time 'render', () -> scene.render(dt)
-
-      # If a second has passed since last update, calculate averages
-      # and update the dom
-      sec = Math.floor ct/1000
-      if sec != stats.currentSecond
-
-        # Calculate average over 1s and update DOM with result
-        showStat 'fps', stats.counts['frame']
-        showAllStats(stats)
-
-        # Reset counters
-        stats.reset sec;
-
-    # Continue the game loop
-    requestAnimationFrame animate
-
-  # Begin game loop
-  requestAnimationFrame animate
+Game = require 'Game.coffee'
 
 # Run the game after content is loaded
 document.addEventListener 'DOMContentLoaded', () ->
-  run()
+  game = new Game
+    gridRadius: 16
+    domId: 'hexgrid'
+    gridDrawRadius: 50
+    debugTimer: 1000
+
+  game.loop()
+  undefined

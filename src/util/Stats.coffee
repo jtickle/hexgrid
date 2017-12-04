@@ -16,31 +16,32 @@
 # through which recipients can access the Corresponding Source.
 #
 
-module.exports = class Terrain
+floor5 = (n) ->
+  Math.floor(n * 1000) / 1000
 
-  preRender: (draw) =>
-    draw.ctx.save()
+module.exports = class Stats
+  constructor: (@timer, @stats) ->
+    @reset()
 
-    # Blank, dark background
-    draw.ctx.fillStyle = draw.color.bgOut
-    draw.ctx.fillRect(0,0,draw.view.canvas.width,draw.view.canvas.height)
+  snapshot: () =>
+    @stats.reduce ((acc, val) =>
+      acc[val] =
+        total: @accumulators[val]
+        count: @counts[val]
+        average: @getAverage val
+      return acc
+      ), {}
 
-    draw.ctx.restore()
-    undefined
+  reset: () =>
+    @accumulators = @stats.reduce ((acc, val) -> acc[val] = 0; acc), {}
+    @counts = @stats.reduce ((acc, val) -> acc[val] = 0; acc), {}
 
-  render: (draw, tile) =>
-    r = tile.resources
-    c = draw.color
+  accumulate: (stat, val) =>
+    @counts[stat]++
+    @accumulators[stat] += val
 
-    fill = switch
-      when r.water > 0 then c.bgWater
-      when r.rare  > 0 then c.bgRare
-      when r.metal > 0 then c.bgMetal
-      else r = c.bgNone
+  time: (stat, fn) =>
+    @accumulate(stat, @timer.time(fn))
 
-    stroke = draw.color.lineIn
-
-    draw.fillstroke(tile, fill, stroke)
-
-  postRender: (draw) =>
-    undefined
+  getAverage: (stat) =>
+    floor5 @accumulators[stat] / @counts[stat]

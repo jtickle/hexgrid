@@ -16,7 +16,7 @@
 # through which recipients can access the Corresponding Source.
 #
 
-Tile = require 'grid/Tile'
+Tile = require 'data/Tile'
 
 mkResource = (rThreshold, coefficient, range, base, otherwise) ->
   if Math.random() > rThreshold
@@ -75,7 +75,7 @@ module.exports = class Grid
     ret = []
     rs = [qr .. rr]
     for r in rs
-      q0 = Math.max(qq - n - (2 * rowCount), vq - n)
+      q0 = Math.max(qq - n - (2*rowCount), vq - n)
       q1 = Math.min(q0 + dq + (2*n), qq + n)
       qs = [q0 .. q1]
       for q in qs
@@ -90,7 +90,6 @@ module.exports = class Grid
 
   toggleSelect: (pos) =>
     sp = @getTile(pos)
-    console.log sp
 
     if @selected?
       @selected.selected = false
