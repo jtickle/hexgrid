@@ -1,6 +1,6 @@
-# 
+#
 # HexGrid - Copyright (C) 2016  Jeffrey W. Tickle
-# 
+#
 # The CoffeeScript code in this page is free software: you can
 # redistribute it and/or modify it under the terms of the GNU
 # General Public License (GNU GPL) as published by the Free Software
@@ -8,94 +8,97 @@
 # any later version.  The code is distributed WITHOUT ANY WARRANTY;
 # without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-# 
+#
 # As additional permission under GNU GPL version 3 section 7, you
 # may distribute non-source (e.g., minimized or compacted) forms of
 # that code without the copy of the GNU GPL normally required by
 # section 4, provided you include this license notice and a URL
 # through which recipients can access the Corresponding Source.
-# 
+#
 
-Grid        = require 'grid/Grid'
-ActionQueue = require 'ActionQueue'
-Input       = require 'Input'
-Scene       = require 'gfx/Scene'
+Grid        = require 'grid/Grid.coffee'
+ActionQueue = require 'ActionQueue.coffee'
+Input       = require 'Input.coffee'
+Timer       = require 'Timer.coffee'
+Stats       = require 'Stats.coffee'
+Scene       = require 'gfx/Scene.coffee'
+
+# Debugging function - shows a stat in the DOM
+showStat = (id, n) ->
+  document.getElementById('stats-' + id).textContent = n
+
+# Debugging function - shows all stats from a Stats object in the DOM
+showAllStats = (stats) ->
+  for stat in stats.stats
+    showStat stat, stats.getAverage(stat)
 
 run = () ->
+  # Game Database
   grid     = new Grid(16)
+
+  # Scene Controller
   scene    = new Scene('hexgrid', 50, grid)
+
+  # Action Queue
   sq       = new ActionQueue(scene)
+
+  # Input Driver
   input    = new Input(sq)
 
-  pt       = 0
+  # Debugging Timer
+  timer    = new Timer(1000)
 
-  window.addEventListener "resize", () ->
-    sq.q('resize')
+  # Debgging Stats
+  stats    = new Stats(timer, ['update', 'render', 'frame'])
 
-  stats =
-    cursec: 0
-    count: 0
-    dt:
-      f: 0
-      b: 0
-      r: 0
+  # Input library attempts to be generic.  This space is for queueing
+  # up scene events in reaction to input handlers.  Probably should
+  # do this better.
+  input.addEventListener "pan", sq.qfn 'pan'
+  input.addEventListener "click", sq.qfn 'click'
+  input.addEventListener "zoom", sq.qfn 'zoom'
+  input.addEventListener "resize", sq.qfn 'resize'
 
-  timers = []
-
-  time =
-    begin: () ->
-      timers.push(Date.now())
-    end: () ->
-      (Date.now() - timers.pop()) / 1000
-
-  floor5 = (n) ->
-    Math.floor(n * 1000) / 1000
-
-  justShowStat = (id, n) ->
-    document.getElementById('stats-' + id).textContent = n
-
-  showStat = (id, n, count) ->
-    justShowStat(id, floor5(n / count))
+  # Connect input driver to main canvas
+  input.activate scene.canvas
 
   animate  = (ct) ->
-    dt = (ct - pt) / 1000
 
-    time.begin()
-    stats.dt.f += floor5(dt)
+    # Calculate time in seconds since last animation began using
+    # time provided by requestAnimationFrame, saves a date lookup
+    dt = if timer.empty() then ct else timer.pop ct
 
-    if dt < 0 then return
+    # Save current rAF time
+    timer.push ct
 
-    time.begin()
-    sq.process()
-    scene.render()
-    stats.dt.r += time.end()
+    # Start a timer for how long it takes to actually process
+    # a whole frame
+    stats.time 'frame', () ->
 
-    scene.render()
+      # Process the scene queue
+      stats.time 'update', () -> sq.process()
 
-    # Calculate FPS
-    stats.count++
-    sec = Math.floor(ct/1000)
-    if sec != stats.cursec
-      justShowStat('fps', stats.count)
-      showStat('dt_f', stats.dt.f, stats.count)
-      showStat('dt_r', stats.dt.r, stats.count)
-      showStat('dt_t', stats.dt.t, stats.count)
-      stats.cursec = sec
-      stats.count = 0
-      stats.dt.f = 0
-      stats.dt.r = 0
-      stats.dt.t = 0
+      # Render the Scene
+      stats.time 'render', () -> scene.render(dt)
 
-    pt = ct
+      # If a second has passed since last update, calculate averages
+      # and update the dom
+      sec = Math.floor ct/1000
+      if sec != stats.currentSecond
 
-    stats.dt.t += time.end()
-    timers.length = 0
+        # Calculate average over 1s and update DOM with result
+        showStat 'fps', stats.counts['frame']
+        showAllStats(stats)
 
-    requestAnimationFrame(animate)
+        # Reset counters
+        stats.reset sec;
 
-  input.activate(scene.canvas)
-  animate(0)
+    # Continue the game loop
+    requestAnimationFrame animate
 
+  # Begin game loop
+  requestAnimationFrame animate
 
+# Run the game after content is loaded
 document.addEventListener 'DOMContentLoaded', () ->
   run()

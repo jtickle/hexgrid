@@ -5,8 +5,7 @@ console.log(__dirname);
 
 module.exports = {
   entry: [
-    'babel-polyfill',
-    './src/Main',
+    path.resolve('src/Main'),
   ],
   output: {
     publicPath: '/',
@@ -14,31 +13,22 @@ module.exports = {
   },
   devtool: 'source-map',
   resolve: {
-    extensions: ["", ".js", ".coffee"],
-    root: [
-      path.resolve('./src'),
-      path.resolve(),
-    ]
+    modules: [path.resolve('.'), path.resolve('node_modules'), path.resolve('src')],
+    extensions: [".js", ".coffee"],
   },
   module: {
-    loaders: [
+    rules: [
       {
-        loader: "babel-loader",
-        test: /\.jsx?$/,
-        query: {
-          plugins: ['transform-runtime'],
-          presets: ['es2015', 'react'],
-        },
-      },
-      {
-        loader: "coffee-loader",
-        test: /\.coffee$/,
+	test: /\.coffee$/,
+	use: [ 
+          {
+            loader: 'coffee-loader',
+            options: { sourceMap: true },
+          },
+        ],
       },
     ],
   },
-  debug: true,
 };
 
-module.exports.module.loaders.map(function(v) {
-  v.include = [path.resolve('./src')];
-});
+

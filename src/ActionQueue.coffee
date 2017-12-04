@@ -1,6 +1,6 @@
-# 
+#
 # HexGrid - Copyright (C) 2016  Jeffrey W. Tickle
-# 
+#
 # The CoffeeScript code in this page is free software: you can
 # redistribute it and/or modify it under the terms of the GNU
 # General Public License (GNU GPL) as published by the Free Software
@@ -8,26 +8,35 @@
 # any later version.  The code is distributed WITHOUT ANY WARRANTY;
 # without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-# 
+#
 # As additional permission under GNU GPL version 3 section 7, you
 # may distribute non-source (e.g., minimized or compacted) forms of
 # that code without the copy of the GNU GPL normally required by
 # section 4, provided you include this license notice and a URL
 # through which recipients can access the Corresponding Source.
-# 
+#
+
+memo = {}
 
 module.exports = class ActionQueue
   constructor: (@target) ->
     @queue = []
 
-  q: (m...) ->
-    @queue.push(m)
+  # q(@target.function, args...)
+  q: (m...) =>
+    @queue.push m
 
-  process: () ->
+  qfn: (cmd) =>
+    if !memo[cmd]?
+      memo[cmd] = (m...) => @q cmd, m...
+    memo[cmd]
+
+  process: () =>
     while @queue.length > 0
       next = @queue.shift()
       method = next.shift()
       if !@target[method]?
-        throw "Requested handler is undefined: " + method
+        console.err('Queue handler is undefined:' + method, next)
+        continue
 
       @target[method].apply(@target, next)

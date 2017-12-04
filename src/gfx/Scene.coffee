@@ -1,6 +1,6 @@
-# 
+#
 # HexGrid - Copyright (C) 2016  Jeffrey W. Tickle
-# 
+#
 # The CoffeeScript code in this page is free software: you can
 # redistribute it and/or modify it under the terms of the GNU
 # General Public License (GNU GPL) as published by the Free Software
@@ -8,20 +8,20 @@
 # any later version.  The code is distributed WITHOUT ANY WARRANTY;
 # without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-# 
+#
 # As additional permission under GNU GPL version 3 section 7, you
 # may distribute non-source (e.g., minimized or compacted) forms of
 # that code without the copy of the GNU GPL normally requiLayerred by
 # section 4, provided you include this license notice and a URL
 # through which recipients can access the Corresponding Source.
-# 
+#
 
-Terrain      = require('gfx/Terrain')
-Structures   = require('gfx/Structures')
-Entities     = require('gfx/Entities')
-Ui           = require('gfx/Ui')
-HexGrid      = require('gfx/HexGrid')
-Transforms   = require('gfx/Transforms')
+Terrain      = require('gfx/Terrain.coffee')
+Structures   = require('gfx/Structures.coffee')
+Entities     = require('gfx/Entities.coffee')
+Ui           = require('gfx/Ui.coffee')
+HexGrid      = require('gfx/HexGrid.coffee')
+Transforms   = require('gfx/Transforms.coffee')
 
 module.exports = class Scene
   center:    [0,0]
@@ -55,7 +55,6 @@ module.exports = class Scene
     @ui         = new Ui(this)
 
     @resize()
-    window.addEventListener("resize", @resize)
 
   render: (dt) =>
     @dt = dt
@@ -71,8 +70,6 @@ module.exports = class Scene
     @ui.preRender()
 
     tiles = @ui.render(@entities.render(@structures.render(@terrain.render(g))))
-    while !(i = tiles.next()).done
-      undefined
 
     @terrain.postRender()
     @structures.postRender()
@@ -95,6 +92,7 @@ module.exports = class Scene
     [x,y] = @center
     @setCenter([x - dx * @scale,
                 y - dy * @scale])
+    undefined
 
   zoom: (pos, ds) =>
     [x,y] = @tfm.screenToWorld(pos)
@@ -104,6 +102,7 @@ module.exports = class Scene
     @adjustScaleBase(ds)
     @setCenter([x - (dx * @scale),
                 y - (dy * @scale)])
+    undefined
 
   click: (pos) =>
     pos = @hex.screenToHex(pos)
@@ -115,5 +114,4 @@ module.exports = class Scene
     @height = document.documentElement.clientHeight
     @canvas.width = @width
     @canvas.height = @height
-      
     undefined

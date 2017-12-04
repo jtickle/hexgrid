@@ -1,6 +1,6 @@
-# 
+#
 # HexGrid - Copyright (C) 2016  Jeffrey W. Tickle
-# 
+#
 # The CoffeeScript code in this page is free software: you can
 # redistribute it and/or modify it under the terms of the GNU
 # General Public License (GNU GPL) as published by the Free Software
@@ -8,21 +8,23 @@
 # any later version.  The code is distributed WITHOUT ANY WARRANTY;
 # without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-# 
+#
 # As additional permission under GNU GPL version 3 section 7, you
 # may distribute non-source (e.g., minimized or compacted) forms of
 # that code without the copy of the GNU GPL normally required by
 # section 4, provided you include this license notice and a URL
 # through which recipients can access the Corresponding Source.
-# 
+#
 
 module.exports = class Input
-  constructor: (@sq) ->
-    @active = false
-
+  constructor: () ->
+    # After this many ms, a click is no longer a click
     @CLICK_TIMEOUT = 300
+
+    # How far the mouse can move and still be considered a click
     @CLICK_THRESHOLD = 25
 
+    # Current mouse data
     @mouse =
       x:  0
       y:  0
@@ -34,11 +36,39 @@ module.exports = class Input
       a:  false
       b:  false
 
+    # Current touch data
     @touch =
       touches: {}
       pinch: null
       average: null
 
+    # Event listeners
+    @listeners = {}
+
+  # Listen for an Input event
+  addEventListener: (event, fn) =>
+    if !@listeners[event]?
+      @listeners[event] = []
+    if(@listeners[event].indexOf(fn) < 0)
+      @listeners[event].push(fn)
+
+  # Remove listener from Input event
+  removeEventListener: (event, fn) =>
+    if !@listeners[event]?
+      return
+    idx = @listeners[event].indexOf(fn)
+    if idx < 0
+      return
+    @listeners[event].splice(idx, 1)
+
+  # Trigger an event
+  emitEvent: (event, m...) =>
+    if !@listeners[event]?
+      return
+    for fn in @listeners[event]
+      fn m...
+
+  # Updates current mouse data from all mouse events
   updateMouseData: (e) =>
     @mouse.x = e.clientX
     @mouse.y = e.clientY
@@ -48,6 +78,7 @@ module.exports = class Input
     @mouse.a = (e.buttons & 8 == 8)
     @mouse.b = (e.buttons & 16 == 16)
 
+  # Updates current touch data from all touch events
   updateTouchData: (e) =>
     e.preventDefault()
     myT = {}
@@ -61,14 +92,17 @@ module.exports = class Input
       do (t) ->
         return undefined if typeof(t) != 'object'
 
+        # Create a touch point
         myT[t.identifier] =
           x: t.clientX
           y: t.clientY
 
+        # Update the center of all touch points
         avgX += t.clientX
         avgY += t.clientY
         cnt  += 1
 
+    # Store touch points
     @touch.touches = myT
 
     # Calculate center of all touches
@@ -90,20 +124,24 @@ module.exports = class Input
       pinch.dx = Math.abs(pinch.x0 - pinch.x1) / 2
       pinch.dy = Math.abs(pinch.y0 - pinch.y1) / 2
 
+      # Thanks, Pythagoras
       pinch.r = Math.sqrt(pinch.dx*pinch.dx + pinch.dy*pinch.dy)
 
       @touch.pinch = pinch
     else
       @touch.pinch = null
 
+  # Just get the position from a mouse event
   getPos: (e) =>
     [e.clientX, e.clientY]
 
+  # It has been decided that this is a mouse move
   mouseMoveViewport: (e, m) =>
-    @sq.q('pan', e.clientX - m.x, e.clientY - m.y)
+    @emitEvent 'pan', e.clientX - m.x, e.clientY - m.y
 
+  # It has been decided that this is a mouse click
   moveOnNotClick: () =>
-    @sq.q('pan', @mouse.x - @mouse.saveX, @mouse.y - @mouse.saveY)
+    @emitEvent 'pan', @mouse.x - @mouse.saveX, @mouse.y - @mouse.saveY
     delete @mouse.clickTimer
     delete @mouse.saveX
     delete @mouse.saveY
@@ -115,7 +153,7 @@ module.exports = class Input
       @mouse.clickTimer = setTimeout(@moveOnNotClick, @CLICK_TIMEOUT)
     @updateMouseData(e)
     undefined
-  
+
   onMouseUp: (e) =>
     if(@mouse.l)
       if(@mouse.clickTimer)
@@ -123,7 +161,7 @@ module.exports = class Input
         delete @mouse.clickTimer
         delete @mouse.saveX
         delete @mouse.saveY
-        @sq.q('click', @getPos(e))
+        @emitEvent 'click', @getPos e
       else
         @mouseMoveViewport(e, @mouse)
     @updateMouseData(e)
@@ -147,9 +185,8 @@ module.exports = class Input
     @mouse.w = e.deltaY
     @mouse.wm = e.deltaMode
     @updateMouseData(e)
-    pos = @getPos(e)
 
-    @sq.q('zoom', pos, e.deltaY / 1000)
+    @emitEvent 'zoom', @getPos(e), e.deltaY / 1000
     undefined
 
   onTouchStart: (e) =>
@@ -165,9 +202,12 @@ module.exports = class Input
 
     if e.touches.length > 0
       if e.touches.length == 2
-        @sq.q('zoom', pa, (np.r - pp.r) / -100)
-      @sq.q('pan', na[0] - pa[0], na[1] - pa[1])
+        @emitEvent 'zoom', pa, (np.r - pp.r) / -100
+      @emitEvent 'pan', na[0] - pa[0], na[1] - pa[1]
     undefined
+
+  onResize: (e) =>
+    @emitEvent('resize')
 
   doListeners: (fn) =>
     fn("mousedown",   @onMouseDown)
@@ -182,6 +222,8 @@ module.exports = class Input
 
   activate: (el) =>
     @doListeners(el.addEventListener)
+    window.addEventListener "resize", @onResize
 
   deactivate: (el) =>
     @doListeners(el.removeEventListener)
+    window.removeEventListener "resize", @onResize

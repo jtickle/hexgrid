@@ -16,47 +16,28 @@
 # through which recipients can access the Corresponding Source.
 #
 
-module.exports = class Terrain
-  constructor: (@scene) ->
+dateDefault = (fn) ->
+  (val) ->
+    if !val?
+      val = Date.now()
+    fn(val)
 
-    @grid = @scene.grid
-    @ctx  = @scene.ctx
-    @tfm  = @scene.tfm
-    @hex  = @scene.hex
+module.exports = class Timer
+  constructor: (@precision) ->
+    @timers = []
+    @push = dateDefault(@push)
+    @pop = dateDefault(@pop)
 
-  drawBackground: () =>
-    @ctx.save()
+  empty: () =>
+    @timers.length == 0
 
-    # Blank, dark background
-    @ctx.fillStyle = @scene.color.bgOut
-    @ctx.fillRect(0,0,@scene.width,@scene.height)
+  push: (val) =>
+    @timers.push(val)
 
-    @ctx.restore()
+  pop: (val) =>
+    (Date.now() - @timers.pop()) / @precision
 
-  preRender: () =>
-
-  render: (tiles) =>
-    @drawBackground()
-
-    ret = []
-
-    for tile in tiles
-      r = tile.resources
-      c = @scene.color
-
-      fill = switch
-        when r.water > 0 then c.bgWater
-        when r.rare  > 0 then c.bgRare
-        when r.metal > 0 then c.bgMetal
-        else r = c.bgNone
-
-      stroke = @scene.color.lineIn
-
-      @hex.fillstroke(tile, fill, stroke)
-
-      ret.push(tile)
-    return ret
-
-    # TODO: Draw the Terrain Type for the tiles
-
-  postRender: () =>
+  time: (fn) =>
+    @push()
+    fn()
+    return @pop()

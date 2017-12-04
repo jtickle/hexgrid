@@ -1,6 +1,6 @@
-# 
+#
 # HexGrid - Copyright (C) 2016  Jeffrey W. Tickle
-# 
+#
 # The CoffeeScript code in this page is free software: you can
 # redistribute it and/or modify it under the terms of the GNU
 # General Public License (GNU GPL) as published by the Free Software
@@ -8,13 +8,13 @@
 # any later version.  The code is distributed WITHOUT ANY WARRANTY;
 # without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
-# 
+#
 # As additional permission under GNU GPL version 3 section 7, you
 # may distribute non-source (e.g., minimized or compacted) forms of
 # that code without the copy of the GNU GPL normally required by
 # section 4, provided you include this license notice and a URL
 # through which recipients can access the Corresponding Source.
-# 
+#
 
 module.exports = class HexGrid
   constructor: (@scene) ->
@@ -25,7 +25,7 @@ module.exports = class HexGrid
 
   screenToHex: (screen) =>
     @hexRound(@worldToHex(@tfm.screenToWorld(screen)))
-  
+
   worldToHex: (pos) =>
     [x,y] = pos
     [x * 2/3 / @scene.gridRadius,
@@ -36,7 +36,7 @@ module.exports = class HexGrid
     x = @scene.gridRadius * 3/2 * hq
     y = @scene.gridRadius * Math.sqrt(3) * (hr + hq/2)
     [x,y]
-  
+
   hexCornerToWorld: (hex, corner) =>
     [hq,hr] = hex
     [cx,cy] = @hexCenterToWorld(hex)
@@ -131,13 +131,14 @@ module.exports = class HexGrid
   stroke: (tile, color, s0, sn) =>
     @ctxStart(tile, s0, sn)
     @ctx.strokeStyle = color
-    @ctx.lineWidth = 2
+    @ctx.lineWidth = Math.max(0.01, 2 / @scene.scale)
     @ctx.stroke()
     @ctxEnd()
 
   fillstroke: (tile, fcolor, scolor) =>
     @ctxStart(tile, 0, 5)
     @ctx.strokeStyle = scolor
+    @ctx.lineWidth = Math.max(0.01, 2 / @scene.scale)
     @ctx.fillStyle = fcolor
     @ctx.fill()
     @ctx.stroke()
