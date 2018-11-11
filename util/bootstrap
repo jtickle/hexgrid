@@ -1,0 +1,17 @@
+if [ -n "$BASH_VERSION" ]; then
+    if [ -f "$HOME/.bashrc" ]; then
+        . "$HOME/.bashrc"
+    fi
+fi
+
+mkdir -p "$HOME/.npm-packages"
+NPM_PACKAGES="$HOME/.npm-packages"
+PATH="$NPM_PACKAGES/bin:$PATH"
+unset MANPATH
+export MANPATH="$NPM_PACKAGES/share/man:${manpath}"
+
+if [ ! -e "$HOME/.envinit" ]; then
+  echo "prefix=/home/node/.npm-packages" >> "$HOME/.npmrc"
+  touch "$HOME/.envinit"
+fi
+
